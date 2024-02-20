@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0062)https://hive.biochemistry.gwu.edu/tools/seq.cgi?cmd=dmStrDistri -->
+<html><head><meta https-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>CensuScope V 1.2</title>
+    
+    <meta name="Author" content="Vahan Simonyan">
+    <meta name="owner" content="Vahan Simonyan">
+    <meta name="Reply-To" content="VahanSim@gmail.com">
+    <meta name="Keywords" content="Hight throughput sequencing, Next Gen Sequencing, Bioinformatics, Protein, Taxonomy, Sequence">
+    <meta name="Description" content="HIVE bioinformatics">
+    <meta https-equiv="expires" content="0">
+    <meta https-equiv="pragma" content="NO-CACHE">
+    
+	<script language="JavaScript1.1" src="./elect_files/qpride.js"> </script>
+	<script language="JavaScript1.1" src="./elect_files/basic.js"> </script>
+	<link rel="stylesheet" href="./elect_files/styles.css" type="text/css">
+	<link rel="stylesheet" href="./elect_files/menu.css" type="text/css">
+
+	
+
+
+
+
+</head>
+
+
+
+<div id="top_menu">
+             <a id="logo" href="https://hive.biochemistry.gwu.edu/"><img border="0" src="./elect_files/hive-small-brand.png" height="35"></a>
+			<ul class="menu_panel">
+				
+				</li>
+				<li class="panel"><a class="menuitem" id="about" href="https://hive.biochemistry.gwu.edu/about.php">ABOUT</a></li>
+				<li class="panel"><a class="menuitem" id="tools" href="https://hive.biochemistry.gwu.edu/tools.php">TOOLS</a></li>
+				
+				<li class="panel"><a class="menuitem" id="people" href="https://hive.biochemistry.gwu.edu/people.php">PEOPLE</a></li>
+				<li class="panel"><a class="menuitem" id="contact" href="https://hive.biochemistry.gwu.edu/contact.php">CONTACT</a></li>
+				
+
+
+            </ul>
+
+		</div>
+<div id="body_container">
+<div id="top_template">
+	<h2 id="cgiLocation">CensuScope v1.2</h2>
+	<div id="top_image">
+</div>
+
+<script type="text/javascript">
+var ray={
+ajax:function(st)
+	{
+		this.show('load');
+	},
+show:function(el)
+	{
+		this.getID(el).style.display='';
+	},
+getID:function(el)
+	{
+		return document.getElementById(el);
+	}
+}
+</script>
+
+<script type="text/javascript">
+<!--
+//   this script is used to for chack all boxes or none of them
+function SetAllCheckBoxes(FormName, FieldName, CheckValue)
+{
+	if(!document.forms[FormName])
+		return;
+	var objCheckBoxes = document.forms[FormName].elements[FieldName];
+	if(!objCheckBoxes)
+		return;
+	var countCheckBoxes = objCheckBoxes.length;
+	if(!countCheckBoxes)
+		objCheckBoxes.checked = CheckValue;
+	else
+		// set the check value for all check boxes
+		for(var i = 0; i < countCheckBoxes; i++)
+			objCheckBoxes[i].checked = CheckValue;
+}
+// -->
+</script>
+<style type="text/css">
+#load{
+position:absolute;
+z-index:1;
+border:3px double #999;
+width:150px;
+height:150px;
+margin-top:-50px;
+margin-left:-60px;
+background:#fff;
+background-image:url(load.gif);
+background-repeat:no-repeat;
+top:50%;
+left:50%;
+text-align:center;
+line-height:300px;
+font-family:"Trebuchet MS", verdana, arial,tahoma;
+font-size:18pt;
+
+}
+</style>
+<div id="load" style="display:none;"></div>
+	<form name="init1" action="midway.php" method="post" enctype="multipart/form-data" onsubmit="return ray.ajax()">
+	
+	
+		<div id="tool-parameter-holder" class="QP_tbl">
+    			<b>
+				
+    			</b>
+    			<b id="tool-heading">Sample Selection</b>
+			<div id="inner-container">
+				<table>
+					<tbody><tr>
+						<td>
+							<span>Please enter the path of your source file: </span>
+						</td>
+						<td>
+							<input type="text" id="accession" class="inputEditable" maxlength="100000" name="source" size="30" required>
+							
+							<span> e.g.  c:\CensuScope\source\bacteria.fastq</span>
+						</td>
+						
+					</tr>
+				</tbody></table>
+			</div>
+			<div id="tool-user-note">
+			<p><b>Note: </b><i>The format should be fastq</i></p>
+		</div>
+		</div>
+		<div id="tool-parameter-holder" class="QP_tbl">
+	
+	<b>
+		
+    	</b>
+		<b id="tool-heading">Algorithm</b>
+
+	<div id="inner-container">
+		<span>
+			Please enter the path of CensuScope package :
+		</span><br>
+		<input class="inputEditable" name="pack" size="40" type="text" value="c:\" required>
+		
+				<p>
+					<b>And</b>
+				</p>
+						
+						<span>Select your desired algorithm</span>
+						<select id="Algorithm" name="Algorithm" disabled>
+							<option value="BLAST" selected>BLAST</option>
+							<option value="BOWTIE" disabled>BOWTIE</option>
+							<option value="BWE" disabled>BWE</option>
+						</select>
+						
+					
+						
+				
+					</div>
+        
+		<div id="tool-user-note">
+			<p><b>Note: </b><i>This version of CensuScope only supports BLAST</i></p>
+		</div>
+	</div>
+	<br>
+	<br>
+	<b id="tool-heading">Database</b>
+
+	<div id="inner-container">
+	
+						
+						<span>Select your desired Database</span>
+						<select id="database" name="database" >
+							
+							<option value="1" selected>MetaPhlAn(Bacterial signature)</option>
+							<option value="0" >NT</option>
+							
+						</select>
+						
+					<div id="tool-user-note">
+					<p><b>Note: </b><i>Metaphlan is only optimized for Bacterial sample but it is fast</i></p>
+					</div>
+						
+				
+					</div>
+	<div id="tool-parameter-holder" class="QP_tbl">
+    	<b>
+					
+    	</b>
+    	<b id="tool-heading">Parameters</b>
+		<div id="inner-container">
+		<table>
+			<tbody><tr>
+				<td>
+					Iterations number:
+                 
+                    <input type="text" name="iteration" size="3" value="1" required>
+					<span>e.g. 2</span>
+				</td>
+				<td>
+					
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Sample size:
+                    <input type="text" name="size" size="3" value="1" required>
+					<span>e.g. 10</span>
+				</td>
+				<td>
+					
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Taxonomic depth:
+                    <select id="depth" name="depth">
+							<option value="3" selected="">Kingdom</option>
+							<option value="4" >family</option>
+							<option value="5" >species</option>
+							
+						</select>
+				</td>
+				<td>
+					
+				</td>
+			</tr>
+		</tbody></table>
+		</div>
+		
+	</div>
+	
+		<input type="hidden" name="cmd" value="-qpSubmit">
+		<input type="reset" name="reset-button">
+		<input id="submission" type="submit" name="c" value="Submit" >
+	</form>
+
+
+
+
+	
+	
+
+
+<div id="bottom-container">
+<ul class="bottom_menu">
+	<li class="bottom_panel">©2013&nbsp;</li>
+	<li class="bottom_panel">&nbsp;<a href="https://hive.biochemistry.gwu.edu/privacy.php">License &amp; Disclaimer</a>&nbsp;</li>
+	<li class="bottom_panel">&nbsp;<a href="https://hive.biochemistry.gwu.edu/contact.php">Contacts</a></li>
+</ul>
+</div>
+</div>
+
+
+
+
+</div></body></html>

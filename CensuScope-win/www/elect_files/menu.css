@@ -1,0 +1,71 @@
+.menu_panel
+	{
+		list-style-type:none;
+		font-size:75%;
+       		font-weight:lighter;
+		margin:0px auto 10px auto;
+		padding:10px 0px;
+        	border:1px solid #CCCCCC;
+        	background-color:#03314B;
+	}
+
+.retrieve-panel
+	{
+		display:inline;
+		padding:0px;
+	}
+	
+.panel
+	{
+		display:inline;
+        	border-right:1px solid #CCCCCC;
+        	padding:5px 10px;
+	}
+
+.menuitem
+	{		
+		padding:5px;	
+	}
+
+.menuitem:link 
+	{ 
+		text-decoration:none; 
+		color:#FFFFFF; 
+	}
+    
+.menuitem:hover 
+	{ 
+		text-decoration:underline; 
+		color:#FFFFFF; 
+        	width:100%;	
+	}
+	
+.menuitem:visited 
+	{ 
+		text-decoration:none; 
+		color:#FFFFFF; 
+	}
+	
+#top_menu
+    	{
+        	font-family:"Helvetica";
+        	margin:0px auto;
+        	min-width:800px;
+    	}
+    	
+#logo
+	{
+		float:left;
+	}
+
+.bottom_panel
+	{
+		display:inline;
+	}
+
+.bottom_menu
+	{
+		
+		float:right;
+		font-size:80%;
+	}
