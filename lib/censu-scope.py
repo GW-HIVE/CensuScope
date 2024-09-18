@@ -13,6 +13,7 @@ import shutil
 import subprocess
 from urllib.parse import urlparse
 from Bio import SeqIO
+import tempfile
 
 __version__ = "0.1"
 __status__ = "BETA"
@@ -36,19 +37,19 @@ def usr_args():
     parser.add_argument(
         "-i", '--iterations',
         required=True,
-        help="number of iterations to perform"
+        help="The number of sample iterations to perform"
     )
 
     parser.add_argument(
         "-s", '--sample-size',
         required=True,
-        help="Read sample size"
+        help="The number of reads to sample for each iteration"
     )
 
     parser.add_argument(
         "-t", '--tax-depth',
         required=True,
-        help="Tax Depth"
+        help="The taxonomy depth to report in the final results"
     )
 
     parser.add_argument(
@@ -142,23 +143,24 @@ def refine():
     # Write the total string to the refine file
     """
     
-    filenames = next(os.walk("home/blastn"), (None, None, []))[2]
+    blast_results = next(os.walk("home/blastn"), (None, None, []))[2]
     
-    for blast in filenames:
-        read = []
+    for result in blast_results:
+        
         total = ""
-        identifier = blast.split("_")[1].split(".")[0]
+        identifier = result.split("_")[1].split(".")[0]
         refine_name = f"home/blastn/refined.{identifier}.txt"
-        print(identifier, blast)
-        with open(f"home/blastn/{blast}", "r") as blast_file:
-            data = blast_file.readlines()
-        for line in data:
-            name = line.split(",")
-            read.append(name[0])
-        unique = list(dict.fromkeys(read))
+        print(identifier, result)
 
+        with open(f"home/blastn/{result}", "r") as blast_file:
+            data = blast_file.readlines()
+        
+        read_ids = [line.split(",")[0] for line in data]
+        unique_ids = list(dict.fromkeys(read_ids))
+
+        import pdb; pdb.set_trace()
         for datum in range(len(data)):
-            if datum < len(unique):
+            if datum < len(unique_ids):
                 total += data[datum]
         with open(refine_name, "w") as refined_file:
             refined_file.write(total)
@@ -170,7 +172,6 @@ def main():
     """
     options = usr_args()
     iter_counter = 0
-    print(options)
     time_start = time.time()
     iteration_count = int(options.iterations)
 
