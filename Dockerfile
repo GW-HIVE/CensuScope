@@ -1,0 +1,30 @@
+# Dockerfile
+
+FROM python:3.10-slim
+RUN apt-get update && apt-get install -y \
+    wget \
+    gcc \
+    make \
+    zlib1g-dev \
+    build-essential \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install NCBI BLAST+
+RUN apt-get update && apt-get install -y ncbi-blast+ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Seqtk
+RUN wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.tar.gz && \
+    tar -xzvf v1.3.tar.gz && \
+    cd seqtk-1.3 && \
+    make && \
+    mv seqtk /usr/local/bin/ && \
+    cd .. && \
+    rm -rf seqtk-1.3 v1.3.tar.gz
+
+WORKDIR /app
+
+COPY . .
+
+CMD ["python", "lib/censuscope.py"]

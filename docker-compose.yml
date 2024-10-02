@@ -1,0 +1,20 @@
+# docker-compose.yml 
+
+services:
+  censuscope:
+    build: .
+    image: censuscope_image
+    container_name: censuscope_container
+    command: >
+      python3 lib/censuscope.py 
+      -i 10 
+      -s 5 
+      -t 5 
+      -q /app/input_files/GW-04_S4_L001_R1_001.fastq
+      -d /app/input_files/blast_db/gfkb/HumanGutDB-v2.6.fasta 
+      
+    volumes:
+      - /tmp/test:/app/input_files
+      - /tmp/test/outputs:/app/temp_dirs
+    stdin_open: true
+    tty: true
