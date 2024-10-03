@@ -10,11 +10,10 @@ services:
       -i 10 
       -s 5 
       -t 5 
-      -q /app/input_files/GW-04_S4_L001_R1_001.fastq
-      -d /app/input_files/blast_db/gfkb/HumanGutDB-v2.6.fasta 
+      -q /app/test_data/GW-04_S4_L001_R1_001.fastq
+      -d /app/test_data/blast_db/gfkb/HumanGutDB-v2.6.fasta 
       
     volumes:
-      - /tmp/test:/app/input_files
       - /tmp/test/outputs:/app/temp_dirs
     stdin_open: true
     tty: true

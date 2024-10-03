@@ -25,6 +25,7 @@ RUN wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.tar.gz && \
 
 WORKDIR /app
 
-COPY . .
+COPY lib/censuscope.py ./lib/censuscope.py
+COPY test_data ./test_data
 
 CMD ["python", "lib/censuscope.py"]
