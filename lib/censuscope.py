@@ -285,6 +285,10 @@ def write_final_table(overall_hits):
         iterations_present = len(hits)
         average_hits = round(hit_sum / total_hits, 4) if total_hits > 0 else 0
         final_table.append([accession, hit_sum, iterations_present, average_hits])
+    
+    # TODO: Need percentage of reads are comming from each accessions.. Composition of sample
+    # TODO: how many accessions are from each organizm => Tax tree
+    # TODO: iterations will cease if no new organizm is found - OPTIONAL 
 
     # Write the final table to a file
     with open(f"{results_path}/final_table.csv", "w", newline='') as final_file:

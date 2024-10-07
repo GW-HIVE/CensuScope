@@ -1,19 +1,23 @@
 # CensuScope Docker Deployment
-
-
+## Contents
+- [Requirements](#requirements)
+- [Running via the cmooand line](#running-via-the-cmooand-line)
+- [Building CensuScope via Docker](#building-censuscope-via-docker)
+- [Running the container via Docker](#running-the-container-via-docker)
 ### Requirements
-- Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/)
+- Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
 - Docker:
     - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
     - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
     - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 
-## Clone the repository
+## Running via the command line
+### Clone the repository
 ```
 git clone https://github.com/GW-HIVE/CensuScope/
 ```
 
-## Enter the repository
+### Enter the repository
 ```
 cd CensuScope
 ```
@@ -23,16 +27,35 @@ cd CensuScope
 ```
 git switch [DESIRED BRANCH TAG]
 ```
+### Command line options
 
-### Building CensuScope via Docker
+```shell
+usage: censuscope [options]
 
-A docker file is provided to allow easy building of the BCO API.  This can be done from the root directory (the directory with Dockerfile in it) by running:
+options:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+  -i ITERATIONS, --iterations ITERATIONS
+                        The number of sample iterations to perform
+  -s SAMPLE_SIZE, --sample-size SAMPLE_SIZE
+                        The number of reads to sample for each iteration
+  -t TAX_DEPTH, --tax-depth TAX_DEPTH
+                        The taxonomy depth to report in the final results
+  -q QUERY_PATH, --query_path QUERY_PATH
+                        Input file name
+  -d DATABASE, --database DATABASE
+                        BLAST database name
+```
+
+## Building CensuScope via Docker
+
+A docker file is provided to allow easy building of the CensuScope container.  This can be done from the root directory (the directory with Dockerfile in it) by running:
 
 `docker build -t  censuscope .`
 
 This will build a container named `censuscope`.
 
-The build process (via the `entrypoint.sh` script) will check for an existing database in the repository and run migrations. If no database is present one will be created and the test data will be loaded (taken from `config/fixtures/local_data.json`).
+The build process will copy the main script and the test data into the container. If no database is present one will be created and the test data will be loaded (taken from `config/fixtures/local_data.json`).
 
 ### Running the container via Docker
 
