@@ -275,6 +275,7 @@ def fetch_nucleotide_uids(unique_accessions: list):
             print(f"Error fetching  UIDs for {terms}: {e}")
             import pdb; pdb.set_trace()
     accession2uid = list(zip(unique_accessions, unique_gi))
+    
     fetch_taxonomy_info(unique_gi)
     
     return accession2uid
