@@ -9,10 +9,12 @@ import json
 import os
 import logging
 import random
+import requests
 import shutil
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET 
 from collections import defaultdict
 from datetime import datetime
 from threading import Thread, Lock
@@ -28,7 +30,8 @@ class GlobalState:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.start_time = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
-        self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        # self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
         self.temp_dirs = {
             "random_samples": f"{self.temp_path}/random_samples",
             "results": f"{self.temp_path}/results",
@@ -36,6 +39,7 @@ class GlobalState:
             "inputs": f"{self.temp_path}/inputs",
         }
         self.iteration_count = 0
+        self.tax_tree = {}
 
         os.makedirs(self.temp_path, exist_ok=True)
         for dir_path in self.temp_dirs.values():
@@ -113,15 +117,6 @@ def usr_args():
     return options
 
 
-
-def configure_env():
-    """
-    """
-
-    for key, value in global_state.temp_dirs.items():
-        os.makedirs(value, exist_ok=True)
-
-
 def count_sequences(query_path: str) -> int:
     """
     Use grep to count the number of sequences in a file.
@@ -185,59 +180,14 @@ def blastn(query_path, database):
         
         blast_command = (
             f"blastn -db {database} "
-            f"-query {random_samples_path}/{random_sample} -out {output} -outfmt 10 "
-            f"-num_threads 10 -evalue 1e-6 -max_target_seqs 1 -perc_identity 80"
+            f"-query {random_samples_path}/{random_sample} -out {output} -outfmt 6 "
+            f"-num_threads 10 -evalue 1e-6 -max_target_seqs 10 -perc_identity 80 -max_hsps 1"
         )
 
         subprocess.run(blast_command, shell=True)
 
 
-def process_blast_file(result, refine_name, iteration, overall_hits):
-    """
-    Process a single blast result file:
-    - Filter out unique GB accessions.
-    - Track hit counts for each accession.
-    - Write refined data and taxonomy hit counts.
-    """
-    unique_accessions = set()
-    filtered_data = []
-    tax_data = defaultdict(int)  # Use defaultdict for simpler counting
-
-    with open(result, "r") as blast_file:
-        reader = csv.reader(blast_file)
-
-        # Process each row in the blast file
-        for row in reader:
-            read_id = row[0]
-            # Parse the GB accession from the row
-            accession = row[1].split("|")[3] if len(row[1].split("|")) > 3 else row[1]
-
-            # Ensure we only process unique accessions
-            if accession not in unique_accessions:
-                unique_accessions.add(accession)
-                filtered_data.append(row)
-                tax_data[accession] += 1
-
-    # Update the overall hit counts (protected by a lock for multithreading)
-    with write_lock:
-        for accession, hit_count in tax_data.items():
-            overall_hits[accession].append(hit_count)
-
-    # Write the filtered data to the refined file
-    with write_lock:
-        with open(refine_name, "w", newline='') as refined_file:
-            writer = csv.writer(refined_file)
-            writer.writerows(filtered_data)
-
-    # Write taxonomy hit counts for this iteration
-    with write_lock:
-        with open(iteration, "w", newline='') as tax_file:
-            writer = csv.writer(tax_file)
-            for accession, count in tax_data.items():
-                writer.writerow([accession, count])
-
-
-def refine_blast_files():
+def refine_blast_files(sample_size: int):
     """
     Iterate over all blast result files, process each one.
     Use multithreading to process multiple files concurrently.
@@ -248,33 +198,134 @@ def refine_blast_files():
     results_path = global_state.temp_dirs["results"]
     blast_results = next(os.walk(blastn_path), (None, None, []))[2]
     overall_hits = defaultdict(list)  # A dictionary to track hits for each accession across files
+    unique_accessions = []
 
-    # Use ThreadPoolExecutor for parallel processing
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = []
-        for result in blast_results:
-            if "result" not in result:
-                continue
-            
-            identifier = result.split("_")[1].split(".")[0]
-            iteration = f"{results_path}/iteration{identifier}.csv"
-            refine_name = f"{results_path}/refined.{identifier}.csv"
+    for result_file in blast_results:
+        if "result" not in result_file:
+            continue
+        unique_reads = set()
+        filtered_data = []
+        tax_data = defaultdict(int)
+        unaligned_reads = sample_size
+        identifier = result_file.split("_")[1].split(".")[0]
+        iteration = f"{results_path}/iteration{identifier}.tsv"
+        refine_name = f"{results_path}/refined.{identifier}.tsv"
+        total_hits = 0
 
-            # Pass the file names and paths to the thread pool
-            futures.append(executor.submit(process_blast_file, f"{blastn_path}/{result}", refine_name, iteration, overall_hits))
+        with open(f"{blastn_path}/{result_file}", "r") as blast_file:
+            reader = csv.reader(blast_file, delimiter="\t")
+            for row in reader:
+                read_id = row[0]
+                if "|" in row[1]:
+                    try:
+                        accession= row[1].split("|")[3]
+                    except IndexError as error:
+                        accession= row[1].split("|")[-1]
+                else:
+                    accession= row[1]
+                
+                if accession not in unique_accessions:
+                    unique_accessions.append(accession)
+                    # found_unique_accessions = True
 
-        # Wait for all threads to complete
-        for future in concurrent.futures.as_completed(futures):
-            future.result()  # Raise any exceptions that occurred during processing
+                if read_id not in unique_reads:
+                    unique_reads.add(read_id)
+                    filtered_data.append(row)
+                    tax_data[accession] += 1
+                    total_hits += 1
+            tax_data["unaligned"] = sample_size - total_hits
+        for accession, hit_count in tax_data.items():
+            overall_hits[accession].append(hit_count)
 
-    # After all files are processed, calculate averages and write the final table
-    write_final_table(overall_hits)
+        with open(refine_name, "w", newline='') as refined_file:
+            writer = csv.writer(refined_file, delimiter="\t")
+            writer.writerows(filtered_data)
+
+        with open(iteration, "w", newline='') as iteration_file:
+            writer = csv.writer(iteration_file, delimiter="\t")
+            for accession, count in tax_data.items():
+                writer.writerow([accession, count])
+    accession2uid = fetch_nucleotide_uids(unique_accessions)
+    print(accession2uid)
+    write_final_table(overall_hits, unique_accessions)
 
 
-def write_final_table(overall_hits):
+def fetch_nucleotide_uids(unique_accessions: list):
+    """
+    Get UIDs from Nucleotide Accessions
+    """
+    
+    tax_tree = {}
+    unique_gi = []
+    accession2uid = []
+    esearch_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
+
+
+    for i in range(0, len(unique_accessions), 20):
+        x = i 
+        terms = ",".join(unique_accessions[x:x+20])
+        esearch_url = f"{esearch_base_url}db=nucleotide&term={terms}&retmode=json"
+        try:
+            response = requests.get(esearch_url)
+            if response.status_code == 200:
+                esearch_result = json.loads(response.content.decode("utf-8"))
+                unique_gi.extend(esearch_result["esearchresult"]["idlist"])
+
+        except Exception as e:
+            print(f"Error fetching  UIDs for {terms}: {e}")
+            import pdb; pdb.set_trace()
+    accession2uid = list(zip(unique_accessions, unique_gi))
+    fetch_taxonomy_info(unique_gi)
+    
+    return accession2uid
+
+
+def etree_to_dict(t):
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = defaultdict(list)
+        for dc in map(etree_to_dict, children):
+            for k, v in dc.items():
+                dd[k].append(v)
+        d = {t.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if children or t.attrib:
+            if text:
+              d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+    return d
+
+
+def fetch_taxonomy_info(uid: str):
+    """
+    Fetch taxonomy info from NCBI for the given accession number.
+    """
+    
+    elink_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?"
+    elink_url = f"{elink_base_url}dbfrom=nucleotide&db=taxonomy&id={uid}"
+    try:
+        response = requests.get(elink_url)
+        if response.status_code == 200:
+            elink_xml = ET.XML(response.content.decode("utf-8"))
+            elink_result = etree_to_dict(elink_xml)
+            print(elink_result)
+        else:
+            import pdb; pdb.set_trace()
+    except Exception as e:
+        print(f"Error fetching taxonomy ID for {id_list}: {e}")
+
+
+    
+def write_final_table(overall_hits, unique_accessions):
     """
     Calculate the average hit count for each GB accession and write the final output.
     """
+    
     results_path = global_state.temp_dirs["results"]
     total_hits = sum([sum(hits) for hits in overall_hits.values()])  # Total hits across all accessions
 
@@ -291,8 +342,8 @@ def write_final_table(overall_hits):
     # TODO: iterations will cease if no new organizm is found - OPTIONAL 
 
     # Write the final table to a file
-    with open(f"{results_path}/final_table.csv", "w", newline='') as final_file:
-        writer = csv.writer(final_file)
+    with open(f"{results_path}/final_table.tsv", "w", newline='') as final_file:
+        writer = csv.writer(final_file, delimiter="\t")
         writer.writerow(["Accession", "Total Hits", "Iterations Present", "Average Hits"])
         writer.writerows(final_table)
 
@@ -343,24 +394,25 @@ def main():
     """
 
     options = usr_args()
-    configure_env()
 
     options.query_path = fastq_to_fasta(
         query_path=options.query_path
     )
 
-    sample_randomizer(
-        iteration_count=int(options.iterations),
-        query_path = options.query_path,
+    # sample_randomizer(
+    #     iteration_count=int(options.iterations),
+    #     query_path = options.query_path,
+    #     sample_size=int(options.sample_size)
+    # )
+    
+    # blastn(
+    #     query_path=options.query_path,
+    #     database=options.database
+    # )
+
+    refine_blast_files(
         sample_size=int(options.sample_size)
     )
-    
-    blastn(
-        query_path=options.query_path,
-        database=options.database
-    )
-
-    refine_blast_files()
     
 
 
