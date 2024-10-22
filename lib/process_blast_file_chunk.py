@@ -155,3 +155,105 @@ def refine_blast_file(result, refine_name, num_threads=4):
 
     except Exception as e:
         logger.critical(f"Failed to process the file {result}: {str(e)}", exc_info=True)
+
+
+
+
+
+
+
+
+
+def fetch_liniage_info():
+    """
+    """
+    return 0 
+
+
+def fetch_nucleotide_uids(unique_accessions: list):
+    """
+    Get UIDs from Nucleotide Accessions
+    """
+    
+    tax_tree = {}
+    unique_gi = []
+    accession2uid = []
+    esearch_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
+
+
+    for i in range(0, len(unique_accessions), 20):
+        x = i 
+        terms = ",".join(unique_accessions[x:x+20])
+        esearch_url = f"{esearch_base_url}db=nucleotide&term={terms}&retmode=json"
+        try:
+            response = requests.get(esearch_url)
+            if response.status_code == 200:
+                esearch_result = json.loads(response.content.decode(response.encoding))
+                unique_gi.extend(esearch_result["esearchresult"]["idlist"])
+            else:
+                import pdb; pdb.set_trace()
+        except Exception as e:
+            print(f"Error fetching  UIDs for {terms}: {e}")
+
+    print(len(unique_accessions) == len(unique_gi))
+    import pdb; pdb.set_trace()
+    for index, accession in enumerate(unique_accessions):
+        taxId = fetch_taxonomy_info(unique_gi[index])
+        tax_tree[accession] = {
+            "uid": unique_gi[index],
+            "taxId": taxId
+        }
+    
+    print(tax_tree)
+    
+    return accession2uid
+
+
+def etree_to_dict(t):
+    """
+    https://stackoverflow.com/a/10077069/7136900
+    """
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = defaultdict(list)
+        for dc in map(etree_to_dict, children):
+            for k, v in dc.items():
+                dd[k].append(v)
+        d = {t.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if children or t.attrib:
+            if text:
+              d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+    return d
+
+
+def fetch_taxonomy_info(uid: str):
+    """
+    Fetch taxonomy info from NCBI for the given accession number.
+    """
+    
+    elink_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?"
+    elink_url = f"{elink_base_url}dbfrom=nucleotide&db=taxonomy&id={uid}"
+    try:
+        response = requests.get(elink_url)
+        if response.status_code == 200:
+            elink_xml = ET.XML(response.content.decode("utf-8"))
+            elink_result = etree_to_dict(elink_xml)
+            return elink_result["eLinkResult"]["LinkSet"]["LinkSetDb"]["Link"]["Id"]
+        elif response.status_code == 429:
+            time.sleep(5)
+            elink_xml = ET.XML(response.content.decode("utf-8"))
+            elink_result = etree_to_dict(elink_xml)
+            return elink_result["eLinkResult"]["LinkSet"]["LinkSetDb"]["Link"]["Id"]
+        else:
+            return "NA"
+
+    except Exception as e:
+        print(f"Error fetching taxonomy ID for {uid}: {e}")
+        return f"Error fetching taxonomy ID for {uid}: {e}"

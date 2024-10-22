@@ -28,4 +28,4 @@ WORKDIR /app
 COPY lib/censuscope.py ./lib/censuscope.py
 COPY test_data ./test_data
 
-CMD ["python", "lib/censuscope.py"]
+CMD ["python", "lib/censuscope.py" "--iterations", "$ITERATIONS", "--sample_size", "$SAMPLE_SIZE", "--tax-depth", "$TAXDEPTH", "--query_path", "$QUERYPATH", "--database", "$DATABASE"]
