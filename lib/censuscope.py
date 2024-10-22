@@ -12,6 +12,8 @@ import random
 import requests
 import shutil
 import subprocess
+import sqlite3
+from sqlite3 import Error
 import sys
 import time
 import xml.etree.ElementTree as ET 
@@ -30,8 +32,8 @@ class GlobalState:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.start_time = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
-        # self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
-        self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
+        self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        # self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
         self.temp_dirs = {
             "random_samples": f"{self.temp_path}/random_samples",
             "results": f"{self.temp_path}/results",
@@ -45,24 +47,24 @@ class GlobalState:
         for dir_path in self.temp_dirs.values():
             os.makedirs(dir_path, exist_ok=True)
 
-        logging.info(
-            "#________________________________________________________________________________#"
-        )
-        logging.info(
-            f"Global State values set: {self.start_time}, {self.base_dir}, {self.temp_path}"
-        )
 global_state = GlobalState()
 
-log_file_path = os.path.join(global_state.temp_path, "CensuScope_app.log")
-logging.basicConfig(
-    level=logging.DEBUG, 
-    format='%(asctime)s - %(levelname)s - %(message)s', 
-    handlers=[
-        logging.FileHandler(log_file_path),
-        # logging.StreamHandler()
-    ]
-)
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler = logging.FileHandler(log_file_path)
+stream_handler = logging.StreamHandler()
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
+
+logger.info(
+    "#_______________________________________________________________________________________________________#\n"+
+    "Global State values set: "+
+    f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, \n\tTemp path: {global_state.temp_path}"
+)
 
 def usr_args():
     """User supplied arguments for functions
@@ -114,6 +116,7 @@ def usr_args():
         sys.argv.append('--help')
 
     options = parser.parse_args()
+
     return options
 
 
@@ -121,11 +124,14 @@ def count_sequences(query_path: str) -> int:
     """
     Use grep to count the number of sequences in a file.
     """
-
+    logger.info(f"Counting sequences in {query_path}")
     try:
         result = subprocess.run(['grep', '-c', '>', query_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return int(result.stdout.strip())
+        count = int(result.stdout.strip())
+        logger.info(f"{count} sequences in {query_path}")
+        return count
     except subprocess.CalledProcessError as e:
+        logger.error(f"Error counting sequences: {e}")
         raise ValueError(f"Error counting sequences: {e}")
 
 
@@ -136,20 +142,20 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
 
     random_samples_path = global_state.temp_dirs["random_samples"]
 
-    # Step 1: Determine how many reads we have
+    logger.info(f"Step 1: Determining how many reads we have")
     total_reads = count_sequences(query_path)  # Assuming count_sequences uses grep to count headers
-    logging.info(f"{total_reads} FASTA records")
+    logger.info(f"{total_reads} FASTA records")
 
     if total_reads > sample_size:
-        logging.info("Subset file")
+        logger.info("Subset file")
 
         for it in range(1, iteration_count + 1):
-            logging.info(f"{it}- out of {iteration_count}")
+            logger.info(f"{it}- out of {iteration_count}")
 
-            # Step 2: Generate random sample indices (these are read indices, not line indices)
+            "Step 2: Generate random sample indices (these are read indices, not line indices)"
             sample_indices = random.sample(range(total_reads), sample_size)
             sample_indices.sort()
-            logging.info(f"Sample indices (sorted): {sample_indices}")
+            logger.info(f"Sample indices (sorted): {sample_indices}")
 
             # Step 3: Create an awk script that will extract sequences based on sample_indices
             # We store the indices in an associative array
@@ -162,10 +168,10 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
             try:
                 subprocess.run(awk_command, shell=True, check=True)
             except subprocess.CalledProcessError as e:
-                logging.exception(f"Error during awk execution: {e}")
+                logger.exception(f"Error during awk execution: {e}")
 
     else:
-        logging.info("Whole file")
+        logger.info("Whole file")
         subprocess.run(f"cp {query_path} home/random_samples/random_sample.1.fasta", shell=True)
 
 
@@ -210,7 +216,7 @@ def refine_blast_files(sample_size: int):
         identifier = result_file.split("_")[1].split(".")[0]
         iteration = f"{results_path}/iteration{identifier}.tsv"
         refine_name = f"{results_path}/refined.{identifier}.tsv"
-        total_hits = 0
+        iteration_hits = 0
 
         with open(f"{blastn_path}/{result_file}", "r") as blast_file:
             reader = csv.reader(blast_file, delimiter="\t")
@@ -232,9 +238,12 @@ def refine_blast_files(sample_size: int):
                     unique_reads.add(read_id)
                     filtered_data.append(row)
                     tax_data[accession] += 1
-                    total_hits += 1
-            tax_data["unaligned"] = sample_size - total_hits
+                    iteration_hits += 1
+
+            tax_data["unaligned"] = sample_size - iteration_hits
         for accession, hit_count in tax_data.items():
+            if hit_count == 0:
+                import pdb; pdb.set_trace()
             overall_hits[accession].append(hit_count)
 
         with open(refine_name, "w", newline='') as refined_file:
@@ -245,108 +254,201 @@ def refine_blast_files(sample_size: int):
             writer = csv.writer(iteration_file, delimiter="\t")
             for accession, count in tax_data.items():
                 writer.writerow([accession, count])
-    accession2uid = fetch_nucleotide_uids(unique_accessions)
-    print(accession2uid)
-    write_final_table(overall_hits, unique_accessions)
+    tax_tree = fetch_taxonomy(unique_accessions)
+    
+    write_final_table(overall_hits, tax_tree)
 
 
-def fetch_nucleotide_uids(unique_accessions: list):
+def fetch_taxonomy(unique_accessions: dict): 
+    """This query retrieves the full taxonomic lineage for a given accession.
+    It uses a recursive Common Table Expression (CTE) to traverse the 
+    taxonomic hierarchy from the accession's associated taxid up to the 
+    root. The `lineage` CTE starts with the initial taxid and iteratively 
+    joins the `nodes` table to find parent taxids, building the lineage 
+    path while preventing cycles. The query includes a `depth` column to track 
+    recursion levels, ensuring correct lineage order. The final result is 
+    ordered by depth to reflect the hierarchical structure from the starting 
+    taxid up to the root.
     """
-    Get UIDs from Nucleotide Accessions
+    
+    db_file = 'taxonomy.db'
+    tax_tree = {
+        "0": {
+            "taxid": 0,
+            "name": "unmatched",
+            "rank": None,
+            "children": None,
+            "accessions": []
+	    }
+    }
+    nodes = {}
+
+    if os.path.isfile(db_file):
+        taxonomy_conn = sqlite3.connect(db_file)
+    else:
+        logger.error("No SQLite DB to check")
+        for accession in unique_accessions:
+            tax_tree["0"]["accessions"].append(accession)
+        return tax_tree
+
+    cursor = taxonomy_conn.cursor()
+    query = """
+    WITH RECURSIVE lineage(taxid, name, rank, parent_taxid, path, depth) AS (
+        -- Start with the taxid associated with the given accession
+        SELECT n.taxid, na.name, n.rank, n.parent_taxid, n.taxid || ',' AS path, 0 AS depth
+        FROM accession_taxid a
+        JOIN nodes n ON a.taxid = n.taxid
+        JOIN names na ON n.taxid = na.taxid
+        WHERE a.accession = ?
+
+        UNION ALL
+
+        -- Recursively join the nodes table to traverse up the hierarchy
+        SELECT n.taxid, na.name, n.rank, n.parent_taxid, l.path || n.taxid || ',', l.depth + 1
+        FROM nodes n
+        JOIN names na ON n.taxid = na.taxid
+        JOIN lineage l ON n.taxid = l.parent_taxid
+        -- Prevent cycles by checking if the taxid has already been visited
+        WHERE instr(l.path, n.taxid || ',') = 0
+    )
+    -- Select the lineage in reverse hierarchical order
+    SELECT taxid, name, rank, parent_taxid, depth
+    FROM lineage
+    ORDER BY depth DESC;
     """
-    
-    tax_tree = {}
-    unique_gi = []
-    accession2uid = []
-    esearch_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
+
+    for accession in unique_accessions:
+        cursor.execute(query, (accession,))
+        lineage = cursor.fetchall()
+        if len(lineage) < 1:
+            tax_tree["0"]["accessions"].append(accession)
+        else: 
+            add_to_tree(tax_tree, lineage, accession, max_depth=6)
+    taxonomy_conn.close()
+
+    return tax_tree 
 
 
-    for i in range(0, len(unique_accessions), 20):
-        x = i 
-        terms = ",".join(unique_accessions[x:x+20])
-        esearch_url = f"{esearch_base_url}db=nucleotide&term={terms}&retmode=json"
-        try:
-            response = requests.get(esearch_url)
-            if response.status_code == 200:
-                esearch_result = json.loads(response.content.decode("utf-8"))
-                unique_gi.extend(esearch_result["esearchresult"]["idlist"])
+def add_to_tree(tax_tree: dict, lineage: list, accession: str, max_depth: int):
+    """Recursively adds nodes to the tree for each taxonomic lineage."""
+    current_level = tax_tree
+    tax_key = None  # To keep track of the taxid at max_depth
+    for taxid, name, rank, parent_taxid, depth in lineage:
+        # Skip the root node if needed
+        # if taxid == 1:
+        #     lineage.pop(0)
+        
+        # if taxid == 131567:
+        #     lineage.pop(0)
+        # print(lineage, "\n")
+        # Create or update the current node
+        if taxid not in current_level and depth > max_depth:
+            current_level[taxid] = {
+                "taxid": taxid,
+                "name": name,
+                "rank": rank,
+                "depth": depth,
+                "children": {},
+                # "accessions": [] if depth == max_depth else None  # Initialize list only at max_depth
+            }
+        
+            current_level = current_level[taxid]["children"]
 
-        except Exception as e:
-            print(f"Error fetching  UIDs for {terms}: {e}")
-            import pdb; pdb.set_trace()
-    accession2uid = list(zip(unique_accessions, unique_gi))
-    
-    fetch_taxonomy_info(unique_gi)
-    
-    return accession2uid
+        # If at max_depth, keep track of this taxid for appending the accession
+        if depth == max_depth:
+            tax_key = taxid
+            current_level[taxid] = {
+                "taxid": taxid,
+                "name": name,
+                "rank": rank,
+                "depth": depth,
+                "accessions": [accession]
+            }
+
+        if depth <= max_depth:
+            current_level[tax_key]["accessions"].append(accession)
 
 
-def etree_to_dict(t):
-    d = {t.tag: {} if t.attrib else None}
-    children = list(t)
+def traverse_tax_tree(node, overall_hits, final_table, total_hits, lineage=""):
+    taxid = node.get('taxid')
+    name = node.get('name')
+    accessions = node.get('accessions', [])
+    children = node.get('children', {})
+
+    # Build the current lineage string
+    current_lineage = f"{lineage}; {name}" if lineage else name
+
+    # Process accessions if present
+    if accessions:
+        if node["name"] == "unmatched":
+            unmatched_sum = 0
+            unmatched_iterations = 0
+            for accession in node["accessions"]:
+                unmatched_sum += sum(overall_hits[accession])
+                if len(overall_hits[accession]) > unmatched_iterations:
+                    unmatched_iterations = len(overall_hits[accession])
+        else:
+            hit_sum = 0
+            iterations_present = 0
+
+            for accession in accessions:
+                if accession in overall_hits:
+                    hit_sum += sum(overall_hits[accession])  # Total hits for this accession
+                    if len(overall_hits[accession]) > iterations_present:
+                        iterations_present = len(overall_hits[accession])  # Number of iterations for this accession
+            
+            # Calculate average hits (percentage of total hits)
+            average_hits = round(hit_sum / total_hits, 4) if total_hits > 0 else 0
+
+            # Add row to the final table
+            final_table.append([
+                taxid,          # Taxonomy ID
+                name,           # Taxonomic Name
+                average_hits,   # Percentage (average hits / total hits)
+                hit_sum,        # Total Hits
+                iterations_present,  # Iterations Present
+                current_lineage  # Full Lineage
+            ])
+
+    # Recursively process children
     if children:
-        dd = defaultdict(list)
-        for dc in map(etree_to_dict, children):
-            for k, v in dc.items():
-                dd[k].append(v)
-        d = {t.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}
-    if t.attrib:
-        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
-    if t.text:
-        text = t.text.strip()
-        if children or t.attrib:
-            if text:
-              d[t.tag]['#text'] = text
-        else:
-            d[t.tag] = text
-    return d
+        for child_taxid, child_node in children.items():
+            traverse_tax_tree(child_node, overall_hits, final_table, total_hits, current_lineage)
 
 
-def fetch_taxonomy_info(uid: str):
-    """
-    Fetch taxonomy info from NCBI for the given accession number.
-    """
-    
-    elink_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?"
-    elink_url = f"{elink_base_url}dbfrom=nucleotide&db=taxonomy&id={uid}"
-    try:
-        response = requests.get(elink_url)
-        if response.status_code == 200:
-            elink_xml = ET.XML(response.content.decode("utf-8"))
-            elink_result = etree_to_dict(elink_xml)
-            print(elink_result)
-        else:
-            import pdb; pdb.set_trace()
-    except Exception as e:
-        print(f"Error fetching taxonomy ID for {id_list}: {e}")
-
-
-    
-def write_final_table(overall_hits, unique_accessions):
+def write_final_table(overall_hits, tax_tree):
     """
     Calculate the average hit count for each GB accession and write the final output.
+    # TODO: Need percentage of reads are comming from each accessions.. Composition of sample
+    # TODO: how many accessions are from each organizm => Tax tree
+    # TODO: iterations will cease if no new organizm is found - OPTIONAL 
     """
     
     results_path = global_state.temp_dirs["results"]
     total_hits = sum([sum(hits) for hits in overall_hits.values()])  # Total hits across all accessions
-
-    final_table = []
-
+    taxonomy_table = []
+    accession_table = []
+    
     for accession, hits in overall_hits.items():
+
         hit_sum = sum(hits)
         iterations_present = len(hits)
-        average_hits = round(hit_sum / total_hits, 4) if total_hits > 0 else 0
-        final_table.append([accession, hit_sum, iterations_present, average_hits])
-    
-    # TODO: Need percentage of reads are comming from each accessions.. Composition of sample
-    # TODO: how many accessions are from each organizm => Tax tree
-    # TODO: iterations will cease if no new organizm is found - OPTIONAL 
+        average_hits = round(hit_sum / total_hits, 4)
+        accession_table.append([accession, hit_sum, iterations_present, average_hits])
 
-    # Write the final table to a file
-    with open(f"{results_path}/final_table.tsv", "w", newline='') as final_file:
-        writer = csv.writer(final_file, delimiter="\t")
+    with open(f"{results_path}/accession_table.tsv", "w", newline="") as accession_file:
+        writer = csv.writer(accession_file, delimiter="\t")
         writer.writerow(["Accession", "Total Hits", "Iterations Present", "Average Hits"])
-        writer.writerows(final_table)
+        writer.writerows(accession_table)
+
+    if len(tax_tree.keys()):
+        for taxid, node in tax_tree.items():
+            traverse_tax_tree(node, overall_hits, taxonomy_table, total_hits)
+    
+    with open(f"{results_path}/taxonomy_table.tsv", "w", newline='') as final_file:
+        writer = csv.writer(final_file, delimiter="\t")
+        writer.writerow(["Taxid", "Name", "Percentage", "Total Hits", "Iterations Present", "Full Lineage"])
+        writer.writerows(taxonomy_table)
 
 
 def fastq_to_fasta(query_path):
@@ -369,7 +471,7 @@ def fastq_to_fasta(query_path):
             text=True
         ).stdout.strip()
     except subprocess.CalledProcessError as e:
-        logging.exception(f"Error counting sequences: {e}")
+        logger.exception(f"Error counting sequences: {e}")
         return 0
 
     
@@ -379,13 +481,13 @@ def fastq_to_fasta(query_path):
     elif head_char == "@":
         try:
             subprocess.run(f"seqtk seq -a {query_path} > {output_fasta}", shell=True, check=True)
-            logging.info(f"Conversion complete: {output_fasta}")
+            logger.info(f"Conversion complete: {output_fasta}")
             return output_fasta
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Error during conversion: {e}")
 
     else:
-        logging.critical(f"Unknown file format {head_char}")
+        logger.critical(f"Unknown file format {head_char}")
         raise ValueError(f"Unsupported sequence header format: {head_char}")
         
 
@@ -393,29 +495,31 @@ def main():
     """
     Main function
     """
-
+    
+    logger.info("FileHandler created successfully.")
     options = usr_args()
+    logger.info(f"{options}")
+
 
     options.query_path = fastq_to_fasta(
         query_path=options.query_path
     )
 
-    # sample_randomizer(
-    #     iteration_count=int(options.iterations),
-    #     query_path = options.query_path,
-    #     sample_size=int(options.sample_size)
-    # )
+    sample_randomizer(
+        iteration_count=int(options.iterations),
+        query_path = options.query_path,
+        sample_size=int(options.sample_size)
+    )
     
-    # blastn(
-    #     query_path=options.query_path,
-    #     database=options.database
-    # )
-
+    blastn(
+        query_path=options.query_path,
+        database=options.database
+    )
+    
     refine_blast_files(
         sample_size=int(options.sample_size)
     )
     
-
 
 if __name__ == "__main__":
     main()
