@@ -1,9 +1,11 @@
 # CensuScope Docker Deployment
 ## Contents
 - [Requirements](#requirements)
-- [Running via the cmooand line](#running-via-the-cmooand-line)
+- [Running via the command line](#running-via-the-command-line)
 - [Building CensuScope via Docker](#building-censuscope-via-docker)
 - [Running the container via Docker](#running-the-container-via-docker)
+- [Pushing a new build to GitHub](#pushing-a-new-build-to-github)
+- [Pulling a Container from GitHub](#Pulling-a-container-from-github)
 ### Requirements
 - Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
 - Docker:
@@ -55,27 +57,56 @@ A docker file is provided to allow easy building of the CensuScope container.  T
 
 This will build a container named `censuscope`.
 
-The build process will copy the main script and the test data into the container. If no database is present one will be created and the test data will be loaded (taken from `config/fixtures/local_data.json`).
-
-### Running the container via Docker
-
-The BCO Api container can be run via docker on the command line in Linux/Windows by running:
-
-`docker run --rm --network host -it bco_api:latest`
-
-The BCO Api container can be run via docker on the command line in MacOS by running:
-
-`docker run --rm -p 8000:8000 -it bco_api:latest`
-
-This will expose the server at `http://127.0.0.1:8000`, whitch is where all of the default settings will expect to find the BCODB. 
-
-#### Overriding the port
-
-It is possible to override the port 8000 to whatever port is desired.  This is done by running the container with 8080 representing the desired port.
-
-`docker run --rm --network host -it bco_api:latest 0.0.0.0:8080`
+The build process will copy the main script into the container.
 
 
-NOTE: The ip address of 0.0.0.0 is to allow the web serer to properly associate with 127.0.0.1 - if given 127.0.0.1 it will not allow communications outside of the container!
+## Running the container via Docker
 
-You can also give it a specific network created with `docker network create` if you wanted to give assigned IP addresses.
+The CensuScope container can be run via docker on the command line in Linux/Windows by running:
+
+```shell
+docker run -v /path/to/blastdb:/app/blastdb \
+  -v /path/to/query/files:/app/inputs \
+  -v /path/to/temp_dirs:/app/temp_dirs  \
+  censuscope \
+  python lib/censuscope.py \
+  --iterations 5 \
+  --sample-size 10 \
+  --tax-depth 5 \
+  --query_path /app/inputs/QUERY.FILE \
+  --database /app/blastdb/FOLDER/BLASTDB
+```
+
+See [Running via the command line](#running-via-the-command-line) above for a breakdown of the parameters. 
+
+This will create a date-time named folder at the specified location `/path/to/temp_dirs` with all the intermediate and result files. 
+
+## Pushing a new build to GitHub
+Publishing to GitHub requires a Public Access Token (PAT). See the [GitHub Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) for more information.
+
+The preferred method is to add your PAT to a `bashrc` or equivalent file. 
+    
+    export CR_PAT=YOUR_TOKEN
+
+This will allow you to run the following command to log in:
+
+    $ echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin
+    > Login Succeeded
+
+The container needs to be tagged using the following format:`docker tag <imageId or imageName> <hostname>:<repository-port>/<image>:<tag>`
+
+So for our container it woul be:
+
+    docker tag censuscope ghcr.io/gw-hive/censuscope:2.0.1
+
+And then you can push using this format:`docker push <hostname>:<repository-port>/<image>:<tag>`
+
+So for this container it would be:
+
+    docker push ghcr.io/gw-hive/censuscope:2.0.1
+
+## Pulling a Container from GitHub
+
+To pull from the GitHub Container Registry us the following:
+
+    docker pull ghcr.io/gw-hive/censuscope:2.0.1
