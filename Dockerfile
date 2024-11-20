@@ -25,7 +25,10 @@ RUN wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.tar.gz && \
 
 WORKDIR /app
 
+COPY requirements.txt requirements.txt
 COPY lib/censuscope.py ./lib/censuscope.py
-COPY test_data ./test_data
+# COPY test_data ./test_data
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 CMD ["python", "lib/censuscope.py" "--iterations", "$ITERATIONS", "--sample_size", "$SAMPLE_SIZE", "--tax-depth", "$TAXDEPTH", "--query_path", "$QUERYPATH", "--database", "$DATABASE"]

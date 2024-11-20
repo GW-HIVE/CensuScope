@@ -13,5 +13,4 @@ Deployment instructions:
 
 ## CensuScope Development and troubleshooting
 - [FAQ and trouble shooting](docs/faq.md)
-- [`.secretes` configuration](docs/config.md)
 - [Testing](docs/testing.md)

@@ -32,8 +32,8 @@ class GlobalState:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.start_time = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
-        self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
-        # self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
+        # self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
         self.temp_dirs = {
             "random_samples": f"{self.temp_path}/random_samples",
             "results": f"{self.temp_path}/results",
@@ -96,6 +96,7 @@ def usr_args():
 
     parser.add_argument(
         "-t", '--tax-depth',
+        choices=["kingdom", "phylum", "class", "order", "family", "genus", "species"],
         required=True,
         help="The taxonomy depth to report in the final results"
     )
@@ -115,6 +116,12 @@ def usr_args():
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
 
+    global_state.iterations = parser.parse_args().iterations
+    global_state.sample_size = parser.parse_args().sample_size
+    global_state.tax_depth = parser.parse_args().tax_depth
+    global_state.query_path = parser.parse_args().query_path
+    global_state.database = parser.parse_args().database
+    
     options = parser.parse_args()
 
     return options
@@ -312,61 +319,73 @@ def fetch_taxonomy(unique_accessions: dict):
         WHERE instr(l.path, n.taxid || ',') = 0
     )
     -- Select the lineage in reverse hierarchical order
-    SELECT taxid, name, rank, parent_taxid, depth
+    SELECT taxid, name, rank, parent_taxid
     FROM lineage
     ORDER BY depth DESC;
     """
 
+    json_file = global_state.temp_dirs['results'] + "/tax_tree.json"
     for accession in unique_accessions:
         cursor.execute(query, (accession,))
         lineage = cursor.fetchall()
         if len(lineage) < 1:
             tax_tree["0"]["accessions"].append(accession)
         else: 
-            add_to_tree(tax_tree, lineage, accession, max_depth=6)
+            add_to_tree(tax_tree, lineage, accession)
     taxonomy_conn.close()
+    json_object = json.dumps(tax_tree, indent=4)
+ 
+    # Writing to sample.json
+    with open(json_file, "w") as outfile:
+        outfile.write(json_object)
 
     return tax_tree 
 
 
-def add_to_tree(tax_tree: dict, lineage: list, accession: str, max_depth: int):
-    """Recursively adds nodes to the tree for each taxonomic lineage."""
-    current_level = tax_tree
-    tax_key = None  # To keep track of the taxid at max_depth
-    for taxid, name, rank, parent_taxid, depth in lineage:
-        # Skip the root node if needed
-        # if taxid == 1:
-        #     lineage.pop(0)
-        
-        # if taxid == 131567:
-        #     lineage.pop(0)
-        # print(lineage, "\n")
-        # Create or update the current node
-        if taxid not in current_level and depth > max_depth:
-            current_level[taxid] = {
-                "taxid": taxid,
-                "name": name,
-                "rank": rank,
-                "depth": depth,
-                "children": {},
-                # "accessions": [] if depth == max_depth else None  # Initialize list only at max_depth
-            }
-        
-            current_level = current_level[taxid]["children"]
+global_tax_tree = {}
+orphans = {}
 
-        # If at max_depth, keep track of this taxid for appending the accession
-        if depth == max_depth:
-            tax_key = taxid
-            current_level[taxid] = {
-                "taxid": taxid,
-                "name": name,
-                "rank": rank,
-                "depth": depth,
-                "accessions": [accession]
-            }
+def find_or_create_node(tax_tree, taxid, name, rank, parent_taxid):
+    if taxid in global_tax_tree:
+        return global_tax_tree[taxid]
 
-        if depth <= max_depth:
-            current_level[tax_key]["accessions"].append(accession)
+    new_node = {
+        "taxid": taxid,
+        "parent": parent_taxid,
+        "name": name,
+        "rank": rank,
+        "children": {},
+    }
+    global_tax_tree[taxid] = new_node
+
+    if parent_taxid in global_tax_tree:
+        global_tax_tree[parent_taxid]["children"][taxid] = new_node
+    else:
+        orphans.setdefault(parent_taxid, []).append(taxid)
+        tax_tree[taxid] = new_node  # Temporarily place it in the main tree
+
+    return new_node
+
+def handle_orphans(parent_taxid):
+    if parent_taxid in orphans:
+        parent_node = global_tax_tree[parent_taxid]
+        for orphan_taxid in orphans[parent_taxid]:
+            parent_node["children"][orphan_taxid] = global_tax_tree[orphan_taxid]
+        del orphans[parent_taxid]
+
+def add_to_tree(tax_tree, lineage, accession):
+    tax_depth = global_state.tax_depth
+
+    for taxid, name, rank, parent_taxid in lineage:
+        if taxid in {1, 131567}:
+            continue
+
+        node = find_or_create_node(tax_tree, taxid, name, rank, parent_taxid)
+        handle_orphans(taxid)  # Check for and reattach orphans
+
+        if rank == tax_depth:
+            node.setdefault("accessions", []).append(accession)
+            break
 
 
 def traverse_tax_tree(node, overall_hits, final_table, total_hits, lineage=""):
@@ -501,20 +520,20 @@ def main():
     logger.info(f"{options}")
 
 
-    options.query_path = fastq_to_fasta(
-        query_path=options.query_path
-    )
+    # options.query_path = fastq_to_fasta(
+    #     query_path=options.query_path
+    # )
 
-    sample_randomizer(
-        iteration_count=int(options.iterations),
-        query_path = options.query_path,
-        sample_size=int(options.sample_size)
-    )
+    # sample_randomizer(
+    #     iteration_count=int(options.iterations),
+    #     query_path = options.query_path,
+    #     sample_size=int(options.sample_size)
+    # )
     
-    blastn(
-        query_path=options.query_path,
-        database=options.database
-    )
+    # blastn(
+    #     query_path=options.query_path,
+    #     database=options.database
+    # )
     
     refine_blast_files(
         sample_size=int(options.sample_size)
