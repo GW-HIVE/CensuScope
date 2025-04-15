@@ -3,24 +3,18 @@
 """
 
 import argparse
-import concurrent.futures
 import csv
 import json
 import os
 import logging
 import random
-import requests
-import shutil
 import subprocess
 import sqlite3
-from sqlite3 import Error
 import sys
-import time
-import xml.etree.ElementTree as ET 
+import time 
 from collections import defaultdict
 from datetime import datetime
 from threading import Thread, Lock
-from urllib.parse import urlparse
 
 write_lock = Lock()
 
@@ -60,10 +54,9 @@ stream_handler = logging.StreamHandler()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
-logger.info(
-    "#_______________________________________________________________________________________________________#\n"+
-    "Global State values set: "+
-    f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, \n\tTemp path: {global_state.temp_path}"
+logger.info("Global State values set: "+
+    f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, "+
+    f"\n\tTemp path: {global_state.temp_path}"
 )
 
 def usr_args():
@@ -155,16 +148,16 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
 
     if total_reads > sample_size:
         logger.info("Subset file")
+        logger.info("Step 2: Generate random sample indices for each iteration (these are read indices, not line indices)")
 
         for it in range(1, iteration_count + 1):
-            logger.info(f"{it}- out of {iteration_count}")
+            logger.info(f"{it}- out of {iteration_count}: ")
 
-            "Step 2: Generate random sample indices (these are read indices, not line indices)"
             sample_indices = random.sample(range(total_reads), sample_size)
             sample_indices.sort()
             logger.info(f"Sample indices (sorted): {sample_indices}")
 
-            # Step 3: Create an awk script that will extract sequences based on sample_indices
+            # Create an awk script that will extract sequences based on sample_indices
             # We store the indices in an associative array
             awk_script = f"""BEGIN {{ split("{','.join(map(str, sample_indices))}", samples, ","); for (i in samples) sample_map[samples[i]] = 1 }}
             /^>/ {{ n++; if (n in sample_map) {{ print; while (getline && !/^>/) print }} }}"""
@@ -173,21 +166,28 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
             awk_command = f"awk '{awk_script}' {query_path} > {random_samples_path}/random_sample.{it}.fasta"
 
             try:
+                logger.info(awk_command)
                 subprocess.run(awk_command, shell=True, check=True)
             except subprocess.CalledProcessError as e:
                 logger.exception(f"Error during awk execution: {e}")
 
     else:
-        logger.info("Whole file")
-        subprocess.run(f"cp {query_path} home/random_samples/random_sample.1.fasta", shell=True)
+        logger.info("Whole file requested, no iterations.")
+        subprocess.run(f"cp {query_path} " + global_state.temp_dirs["random_samples"], shell=True)
 
 
-def blastn(query_path, database):
-    """"""
+def blastn(database):
+    """Run BLAST
+    
+    Options: 
+        -outfmt 6 -num_threads 10 -evalue 1e-6 -max_target_seqs 10 -perc_identity 80 -max_hsps 1
+    """
+
     random_samples_path = global_state.temp_dirs["random_samples"]
     blastn_path =  global_state.temp_dirs["blastn"]
     filenames = next(os.walk(random_samples_path), (None, None, []))[2]
     for random_sample in filenames:
+        now = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
         identifier = random_sample.split(".")[1]
         output = f"{blastn_path}/result_{identifier}.txt"
         
@@ -197,7 +197,10 @@ def blastn(query_path, database):
             f"-num_threads 10 -evalue 1e-6 -max_target_seqs 10 -perc_identity 80 -max_hsps 1"
         )
 
+        logger.info(f"{now}: Start result_{identifier}.txt\n\t{blast_command}")
         subprocess.run(blast_command, shell=True)
+        logger.info(f"Finished result_{identifier}.txt")
+        logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
 
 
 def refine_blast_files(sample_size: int):
@@ -207,8 +210,9 @@ def refine_blast_files(sample_size: int):
     Track hit counts across all files and calculate averages.
     """
 
+    logger.info("Refining BLAST results")
+    logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     blastn_path =  global_state.temp_dirs["blastn"]
-    results_path = global_state.temp_dirs["results"]
     blast_results = next(os.walk(blastn_path), (None, None, []))[2]
     overall_hits = defaultdict(list)  # A dictionary to track hits for each accession across files
     unique_accessions = []
@@ -217,12 +221,7 @@ def refine_blast_files(sample_size: int):
         if "result" not in result_file:
             continue
         unique_reads = set()
-        filtered_data = []
         tax_data = defaultdict(int)
-        unaligned_reads = sample_size
-        identifier = result_file.split("_")[1].split(".")[0]
-        iteration = f"{results_path}/iteration{identifier}.tsv"
-        refine_name = f"{results_path}/refined.{identifier}.tsv"
         iteration_hits = 0
 
         with open(f"{blastn_path}/{result_file}", "r") as blast_file:
@@ -239,28 +238,19 @@ def refine_blast_files(sample_size: int):
                 
                 if accession not in unique_accessions:
                     unique_accessions.append(accession)
-                    # found_unique_accessions = True
 
                 if read_id not in unique_reads:
                     unique_reads.add(read_id)
-                    filtered_data.append(row)
                     tax_data[accession] += 1
                     iteration_hits += 1
 
             tax_data["unaligned"] = sample_size - iteration_hits
+
         for accession, hit_count in tax_data.items():
             if hit_count == 0:
-                import pdb; pdb.set_trace()
+                logger.exception(f"Error with hit count for accession {accession}!")
             overall_hits[accession].append(hit_count)
 
-        with open(refine_name, "w", newline='') as refined_file:
-            writer = csv.writer(refined_file, delimiter="\t")
-            writer.writerows(filtered_data)
-
-        with open(iteration, "w", newline='') as iteration_file:
-            writer = csv.writer(iteration_file, delimiter="\t")
-            for accession, count in tax_data.items():
-                writer.writerow([accession, count])
     tax_tree = fetch_taxonomy(unique_accessions)
     
     write_final_table(overall_hits, tax_tree)
@@ -293,7 +283,7 @@ def fetch_taxonomy(unique_accessions: dict):
     if os.path.isfile(db_file):
         taxonomy_conn = sqlite3.connect(db_file)
     else:
-        logger.error("No SQLite DB to check")
+        logger.error("No taxonomy DB found. Taxonomic rankings will be ignored.")
         for accession in unique_accessions:
             tax_tree["0"]["accessions"].append(accession)
         return tax_tree
@@ -366,6 +356,7 @@ def find_or_create_node(tax_tree, taxid, name, rank, parent_taxid):
 
     return new_node
 
+
 def handle_orphans(parent_taxid):
     if parent_taxid in orphans:
         parent_node = global_tax_tree[parent_taxid]
@@ -373,11 +364,15 @@ def handle_orphans(parent_taxid):
             parent_node["children"][orphan_taxid] = global_tax_tree[orphan_taxid]
         del orphans[parent_taxid]
 
+
 def add_to_tree(tax_tree, lineage, accession):
     tax_depth = global_state.tax_depth
 
     for taxid, name, rank, parent_taxid in lineage:
         if taxid in {1, 131567}:
+            continue
+
+        if rank == '-':
             continue
 
         node = find_or_create_node(tax_tree, taxid, name, rank, parent_taxid)
@@ -438,11 +433,10 @@ def traverse_tax_tree(node, overall_hits, final_table, total_hits, lineage=""):
 def write_final_table(overall_hits, tax_tree):
     """
     Calculate the average hit count for each GB accession and write the final output.
-    # TODO: Need percentage of reads are comming from each accessions.. Composition of sample
-    # TODO: how many accessions are from each organizm => Tax tree
     # TODO: iterations will cease if no new organizm is found - OPTIONAL 
     """
-    
+    logger.info("Writing final results")
+    logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     results_path = global_state.temp_dirs["results"]
     total_hits = sum([sum(hits) for hits in overall_hits.values()])  # Total hits across all accessions
     taxonomy_table = []
@@ -520,20 +514,19 @@ def main():
     logger.info(f"{options}")
 
 
-    # options.query_path = fastq_to_fasta(
-    #     query_path=options.query_path
-    # )
+    global_state.query_path = fastq_to_fasta(
+        query_path=global_state.query_path
+    )
 
-    # sample_randomizer(
-    #     iteration_count=int(options.iterations),
-    #     query_path = options.query_path,
-    #     sample_size=int(options.sample_size)
-    # )
+    sample_randomizer(
+        iteration_count=int(global_state.iterations),
+        query_path = global_state.query_path,
+        sample_size=int(options.sample_size)
+    )
     
-    # blastn(
-    #     query_path=options.query_path,
-    #     database=options.database
-    # )
+    blastn(
+        database=options.database
+    )
     
     refine_blast_files(
         sample_size=int(options.sample_size)
