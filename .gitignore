@@ -166,3 +166,4 @@ cython_debug/
 /temp_dirs
 /test_data
 /blast_db
+taxonomy.db
