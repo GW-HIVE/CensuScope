@@ -1,19 +1,21 @@
-# docker-compose.yml 
+# # docker-compose.yml 
+
+version: "3.8"
 
 services:
   censuscope:
-    build: .
-    image: censuscope_image
-    container_name: censuscope_container
+    image: ghcr.io/gw-hive/censuscope:2.1.0
+    container_name: censuscope_localtest
     command: >
-      python3 lib/censuscope.py 
-      -i 10 
-      -s 5 
-      -t 5 
-      -q /app/test_data/GW-04_S4_L001_R1_001.fastq
-      -d /app/test_data/blast_db/gfkb/HumanGutDB-v2.6.fasta 
-      
+      python lib/censuscope.py
+      -i 5
+      -s 10
+      -t family
+      -q /app/data/[query.fastq]
+      -d /app/data/[path/to/blast_db]
     volumes:
-      - /tmp/test/outputs:/app/temp_dirs
+      - [/your/data]:/app/data
+      - ./temp_dirs:/app/temp_dirs
+
     stdin_open: true
     tty: true
