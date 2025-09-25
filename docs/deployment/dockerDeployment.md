@@ -7,11 +7,21 @@
 - [Pushing a new build to GitHub](#pushing-a-new-build-to-github)
 - [Pulling a Container from GitHub](#Pulling-a-container-from-github)
 ### Requirements
-- Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
-- Docker:
-    - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
-    - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
-    - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+1. Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
+2. [Docker](https://docs.docker.com/engine/install/)
+    - Links if using Docker Desktop:
+      - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
+      - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
+      - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+3. An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
+    - Use `makeblastdb` to build a database
+      - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+      - Databses:
+        - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+        - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (21.1GB)
+        - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
+<br>
+Note: Downloading the files and building the database may take a lot of time. Plan ahead.
 
 ## Running via the command line
 ### Clone the repository
@@ -29,6 +39,13 @@ cd CensuScope
 ```
 git switch [DESIRED BRANCH TAG]
 ```
+### Build project folders
+```
+mkdir -p {inputs,temp_dirs}
+chmod 777 temp_dirs
+```
+Move your query file into this directory and name appropriately (the command calls `QUERY.FILE`).
+
 ### Command line options
 
 ```shell
@@ -62,12 +79,12 @@ The build process will copy the main script into the container.
 
 ## Running the container via Docker
 
-The CensuScope container can be run via docker on the command line in Linux/Windows by running:
+The CensuScope container can be run via docker on the command line in Linux/Windows by running (replace paths and input file name as necessary; if you followed the steps above, only the "BLASTDB" needs to be updated):
 
 ```shell
-docker run -v /path/to/blastdb:/app/blastdb \
-  -v /path/to/query/files:/app/inputs \
-  -v /path/to/temp_dirs:/app/temp_dirs  \
+docker run -v /PATH/TO/BLASTDB:/app/blastdb \
+  -v ~/CensuScope/inputs:/app/inputs \
+  -v ~/CensuScope/temp_dirs:/app/temp_dirs  \
   censuscope \
   python lib/censuscope.py \
   --iterations 5 \
