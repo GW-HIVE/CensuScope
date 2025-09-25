@@ -89,7 +89,7 @@ docker run -v /PATH/TO/BLASTDB:/app/blastdb \
   python lib/censuscope.py \
   --iterations 5 \
   --sample-size 10 \
-  --tax-depth 5 \
+  --tax-depth species \
   --query_path /app/inputs/QUERY.FILE \
   --database /app/blastdb/FOLDER/BLASTDB
 ```
