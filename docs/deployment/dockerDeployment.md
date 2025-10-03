@@ -82,7 +82,7 @@ The build process will copy the main script into the container.
 The CensuScope container can be run via docker on the command line in Linux/Windows by running (replace paths and input file name as necessary; if you followed the steps above, only the "BLASTDB" needs to be updated):
 
 ```shell
-docker run -v /PATH/TO/BLASTDB:/app/blastdb \
+docker run -v /PATH/TO/BLASTDBFILE:/app/blastdb \
   -v ~/CensuScope/inputs:/app/inputs \
   -v ~/CensuScope/temp_dirs:/app/temp_dirs  \
   censuscope \
@@ -91,7 +91,7 @@ docker run -v /PATH/TO/BLASTDB:/app/blastdb \
   --sample-size 10 \
   --tax-depth species \
   --query_path /app/inputs/QUERY.FILE \
-  --database /app/blastdb/FOLDER/BLASTDB
+  --database /app/blastdb/<BLASTDB FILE>
 ```
 
 See [Running via the command line](#running-via-the-command-line) above for a breakdown of the parameters. 
