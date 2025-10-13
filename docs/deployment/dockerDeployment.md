@@ -14,6 +14,7 @@
       - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
       - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 3. An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
+    - Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it
     - Use `makeblastdb` to build a database
       - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
       - Databses:
