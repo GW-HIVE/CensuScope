@@ -19,7 +19,7 @@
       - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
       - Databses:
         - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-        - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (21.1GB)
+        - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (32.1GB compressed)
         - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
     - Note that if you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
         - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
