@@ -18,6 +18,11 @@ from threading import Thread, Lock
 
 write_lock = Lock()
 
+def normalize_accession(acc: str) -> str:
+	if not acc:
+		return acc
+	return acc.split(".", 1)[0]
+
 __version__ = "0.1"
 __status__ = "BETA"
 
@@ -230,11 +235,13 @@ def refine_blast_files(sample_size: int):
                 read_id = row[0]
                 if "|" in row[1]:
                     try:
-                        accession= row[1].split("|")[3]
+                        accession_raw = row[1].split("|")[3]
                     except IndexError as error:
-                        accession= row[1].split("|")[-1]
+                        accession_raw = row[1].split("|")[-1]
                 else:
-                    accession= row[1]
+                    accession_raw = row[1]
+
+				accession = normalize_accession(accession_raw)
                 
                 if accession not in unique_accessions:
                     unique_accessions.append(accession)
