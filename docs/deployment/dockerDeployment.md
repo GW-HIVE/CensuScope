@@ -13,18 +13,22 @@
       - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
       - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
       - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-3. An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
-    - Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it
-    - Use `makeblastdb` to build a database
-      - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-      - Databses:
-        - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-        - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (32.1GB compressed)
-        - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
-    - Note that if you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
-        - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
+3. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
+
+## Databases
+Databases are used..
+Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it
+Use `makeblastdb` to build a database. Downloading the files and building the database may take a lot of time. Plan ahead.
+    - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+      - 
+Databases:
+    - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+    - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (32.1GB compressed)
+    - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
+        
+Note: If you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
+    - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
 <br>
-Note: Downloading the files and building the database may take a lot of time. Plan ahead.
 
 ## Running via the command line
 ### Clone the repository
