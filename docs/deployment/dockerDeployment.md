@@ -24,9 +24,9 @@ Use `makeblastdb` to build a database.
     - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
 
 **Databases:**
-    - Standard/Preferred is [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-    - SlimNT is a custom database that our lab has created. The GitHub Repo can be found [here](https://github.com/GW-HIVE/slimNT).
-    - Filtered_NT is another custom databse from our lab. The GitHub Repo can be found [here](https://github.com/GW-HIVE/filtered_nt).
+- Standard/Preferred is [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+- SlimNT is a custom database that our lab has created. The GitHub Repo can be found [here](https://github.com/GW-HIVE/slimNT).
+- Filtered_NT is another custom databse from our lab. The GitHub Repo can be found [here](https://github.com/GW-HIVE/filtered_nt).
         
 Note: If you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
     - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
