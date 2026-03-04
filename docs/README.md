@@ -3,9 +3,12 @@ This directory contains documentation related to the deployment and supporting r
 
 This README serves as an _overview_ and _table of contents_ for the documentation in this folder. Each linked document explains a specific resource, how it is structured, how it is generated or obtained, and how it is used within the CensuScope workflow.
 
-## Taxonomdy Database Documentation
-This document, [taxonomy.md](https://github.com/GW-HIVE/CensuScope/edit/christie-readmes/docs/taxonomy.md), describes the taxonomy database used by CensuScope: its purpose, schema, build process, and validation. The taxonomy database is treated as static reference infrastructure and is not modified during execution. The taxonomy.db is a required file to run the Censuscope. 
-- The taxonomy.md README goes into detail about what is contained within the database file, how to retreive it, and how it is used in the Censuscope steps.
+## Taxonomy Database Documentation
+
+This document, [taxonomy.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/taxonomy.md), describes the taxonomy database used by CensuScope, including its purpose, schema, build process, and validation.
+
+- The taxonomy database is treated as **static reference infrastructure** and is not modified during execution. A valid `taxonomy.db` file is required for running CensuScope.
+- The `taxonomy.md` document provides details on the contents of the database, how it is generated from the NCBI taxonomy dump, and how it is used within the CensuScope workflow for taxonomic hierarchy lookups and result aggregation.
 
 ## Docker Deployment Guide (Primary)
 This document, [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/deployment/dockerDeployment.md), provides the primary guide for deploying and running CensuScope using Docker.
