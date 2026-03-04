@@ -8,7 +8,7 @@
 - [Pulling a Container from GitHub](#Pulling-a-container-from-github)
   
 ## Requirements
-1. Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
+1. Python ≥3.10.6. [3.10.6 recommended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
 2. [Docker](https://docs.docker.com/engine/install/)
     - Links if using Docker Desktop:
       - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
