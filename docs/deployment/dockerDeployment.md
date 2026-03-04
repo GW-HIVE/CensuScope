@@ -16,15 +16,16 @@
 3. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
 
 ## Databases
-Databases are used..
-Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it
-Use `makeblastdb` to build a database. Downloading the files and building the database may take a lot of time. Plan ahead.
+The taxonomy database stores the taxonomic hierarchy and a single scientific name for each taxonomic identifier (taxid). CensuScope uses this database to map BLAST results to taxonomy and organize output by taxonomic rank, and the official Docker image includes a prebuilt version so users typically do not need to build it themselves. Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it.
+
+Use `makeblastdb` to build a database. 
+    - Downloading the files and building the database may take a lot of time. Plan ahead.
     - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-      - 
-Databases:
-    - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-    - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (32.1GB compressed)
-    - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
+
+**Databases:**
+    - Standard/Preferred is [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+    - SlimNT is a custom database that our lab has created. The GitHub Repo can be found [here](https://github.com/GW-HIVE/slimNT).
+    - Filtered_NT is another custom databse from our lab. The GitHub Repo can be found [here](https://github.com/GW-HIVE/filtered_nt).
         
 Note: If you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
     - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
