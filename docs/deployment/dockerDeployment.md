@@ -6,7 +6,8 @@
 - [Running the container via Docker](#running-the-container-via-docker)
 - [Pushing a new build to GitHub](#pushing-a-new-build-to-github)
 - [Pulling a Container from GitHub](#Pulling-a-container-from-github)
-### Requirements
+  
+## Requirements
 1. Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
 2. [Docker](https://docs.docker.com/engine/install/)
     - Links if using Docker Desktop:
@@ -15,7 +16,7 @@
       - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 3. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
 
-## Databases
+### Databases
 The taxonomy database stores the taxonomic hierarchy and a single scientific name for each taxonomic identifier (taxid). CensuScope uses this database to map BLAST results to taxonomy and organize output by taxonomic rank, and the official Docker image includes a prebuilt version so users typically do not need to build it themselves. Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it.
 
 Use `makeblastdb` to build a database. 
