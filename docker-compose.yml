@@ -6,16 +6,15 @@ services:
   censuscope:
     image: ghcr.io/gw-hive/censuscope:2.1.0
     container_name: censuscope_localtest
-    # command: sleep infinity
     command: >
       python lib/censuscope.py
       -i 5
       -s 10
       -t family
-      -q /app/data/GW-04_S4_L001_R1_001.fastq
-      -d /app/data/blast_db/gfkb/HumanGutDB-v2.6.fasta
+      -q /app/data/[query.fastq]
+      -d /app/data/[path/to/blast_db]
     volumes:
-      - /Users/hadleyking/GitHub/GW_HIVE/CensuScope:/app/data
+      - [/your/data]:/app/data
       - ./temp_dirs:/app/temp_dirs
 
     stdin_open: true
