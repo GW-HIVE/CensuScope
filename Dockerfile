@@ -47,7 +47,7 @@ RUN curl -o /app/raw_data/new_taxdump.tar.gz \
 
 RUN tar -xzf /app/raw_data/new_taxdump.tar.gz -C /app/raw_data 
 
-RUN chown -R app user:appuser /app/raw_data 
+RUN chown -R appuser:appuser /app/raw_data 
 
 COPY requirements.txt requirements.txt
 COPY lib ./lib
