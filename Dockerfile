@@ -33,13 +33,21 @@ WORKDIR /app
 
 ## Download NCBI Taxonomy Data
 RUN mkdir raw_data
+RUN curl -o /app/raw_data/nucl_gb.accession2taxid.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz
+
+RUN curl -o /app/raw_data/nucl_wgs.accession2taxid.EXTRA.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.EXTRA.gz
+
+RUN curl -o /app/raw_data/nucl_wgs.accession2taxid.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz
 
 RUN curl -o /app/raw_data/new_taxdump.tar.gz \
     ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz 
 
 RUN tar -xzf /app/raw_data/new_taxdump.tar.gz -C /app/raw_data 
 
-RUN chown -R appuser:appuser /app/raw_data 
+RUN chown -R app user:appuser /app/raw_data 
 
 COPY requirements.txt requirements.txt
 COPY lib ./lib
