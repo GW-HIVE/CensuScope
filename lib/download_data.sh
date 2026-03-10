@@ -13,5 +13,4 @@ curl -o CensuScopeDB/nucl_wgs.accession2taxid.gz \
 curl -o CensuScopeDB/new_taxdump.tar.gz \
     ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz 
 
-
-popd
+popd 2>&1 > /dev/null
