@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -Eeuo pipefail
 
 case $# in
@@ -19,14 +18,15 @@ trap 'rm -f "$tmp"' EXIT INT TERM
 # NCBI names.dmp format:
 # tax_id | name_txt | unique_name | name_class |
 #
-# We retain ONLY scientific names:
+# Retain ONLY scientific names:
 # taxid | name
 
-cut -f1-4 -d\| < "$namesFile" |
-    tr -d '\011' |
-    awk -F\| '$4 == "scientific name" { printf "%s|%s\n", $1, $2 }' > "$tmp"
+cut -f1-4 -d\| < "$namesFile" \
+  | tr -d '\011' \
+  | awk -F\| '$4 == "scientific name" { printf "%s|%s\n", $1, $2 }' \
+  > "$tmp"
 
-sqlite3 "$dbfile" <<'EOF'
+sqlite3 "$dbfile" <<EOF
 PRAGMA journal_mode = OFF;
 PRAGMA synchronous = OFF;
 PRAGMA temp_store = MEMORY;
@@ -43,9 +43,9 @@ CREATE TABLE names_tmp (
 );
 
 .separator '|'
-.import '"$tmp"' names_tmp
+.import $tmp names_tmp
 
--- Normalize to exactly one name per taxid
+-- Enforce exactly one scientific name per taxid
 CREATE TABLE names (
     taxid INTEGER PRIMARY KEY,
     name  TEXT NOT NULL
@@ -57,8 +57,6 @@ FROM names_tmp
 GROUP BY taxid;
 
 DROP TABLE names_tmp;
-
-CREATE INDEX names_taxid_idx ON names(taxid);
 
 COMMIT;
 EOF
