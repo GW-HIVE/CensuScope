@@ -136,13 +136,20 @@ Detailed instructions for building and validating the taxonomy database are prov
 See: docs/processes/01_taxonomy_db.md
 
 ## Installation and Requirements
-Split clearly:
 
-CLI requirements (Python, BLAST)
+### CLI requirements
+#### Operating System
+- Linux or macOS (recommended)
+- Windows via WSL is possible but not officially supported
+#### Software Dependencies
+- Python ≥ 3.9
+- BLAST+ (ncbi-blast+)
+- SQLite ≥ 3.35
+- seqtk
+- curl, tar, awk, sed (standard UNIX tools)
 
-Docker requirements
-
-No commands yet — just prerequisites.
+### Docker requirements
+- Docker
 
 ## Deployment
 CensuScope supports three officially supported deployment and execution modes. Each mode uses the same underlying architecture and execution logic, differing only in how the software and reference data are prepared and invoked.
@@ -165,7 +172,7 @@ In this mode, CensuScope is built and run directly from source using a local Pyt
 
 This approach provides maximum flexibility for development, debugging, and experimentation, at the cost of additional setup.
 
-See: [docs/deployment/localDeployment.md]()
+See: [docs/deployment/localDeployment.md](docs/deployment/localDeployment.md)
 
 #### Build with Docker
 Intended for:

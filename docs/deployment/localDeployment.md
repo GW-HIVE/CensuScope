@@ -89,7 +89,7 @@ reference.nhr
 
 ### Notes
 - `-parse_seqids` is recommended so BLAST outputs taxonomic identifiers when available
-- Large databases may take significant time and disk space
+- Large databases may take significant time and disk space (aprox 8x th input file)
 
 ---
 
@@ -101,22 +101,61 @@ Only two files are required:
 - `nodes.dmp`
 - `names.dmp`
 
-### Download the NCBI taxonomy dump
+### Download and extract the NCBI taxonomy dump
+See [`taxdump_readme.txt`](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_readme.txt) for an explanation of these files. These are used to populate the taxonomy DB with the scientific names and the coorisponding taxonomic nodes.
+
+Create the `raw_data` directory:
 ```bash
 mkdir -p raw_data
+```
+
+Download the `new_taxdump.tar`:
+```bash
 curl -o raw_data/new_taxdump.tar.gz \
   https://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz
 ```
 
-### Extract the dump
+Extract the dump files:
 ```bash
 tar -xzf raw_data/new_taxdump.tar.gz -C raw_data
 ```
 
-### Build the reduced taxonomy database
+### Download and extract the NCBI accession2taxid mapping files:
+See the [`README](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/README) for an explanation of these files. This current implementation of CensuScope only uses the LIVE nucleotide sequence records. It is possible to extend the taxonomy DB to include protein sequences or the DEAD sequences, but that significantly increases the DB size and is only usefull if the reference BLASTDB contains protein sequences or depreciated nucleotide sequences. 
+
+Download the `nucl_wgs.accession2taxid.gz`:
 ```bash
-lib/add-nodes.sh raw_data/nodes.dmp taxonomy.db
-lib/add-names.sh raw_data/names.dmp taxonomy.db
+curl -o raw_data/nucl_wgs.accession2taxid.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz
+```
+
+Download the `nucl_gb.accession2taxid.gz`:
+```bash
+curl -o raw_data/nucl_gb.accession2taxid.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz
+```
+
+Download the `nucl_wgs.accession2taxid.EXTRA.gz`:
+```bash
+curl -o raw_data/nucl_wgs.accession2taxid.EXTRA.gz \
+    ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.EXTRA.gz
+```
+
+### Build the reduced taxonomy database 
+The `nucleotide-db.sh` script will read the three `accession2taxid` files downloaded and create the `accession_taxid` table in `taxonomy.db` (this will take a while).
+
+```bash
+sh lib/nucleotide-db.sh raw_data/ taxonomy.db
+```
+
+The `add-names.sh` script will read the three `accession2taxid` files downloaded and create the `names` table in `taxonomy.db`.
+```bash
+sh lib/add-names.sh raw_data/names.dmp taxonomy.db
+```
+
+The `add-nodes.sh` script will read the three `accession2taxid` files downloaded and create the `nodes` table in `taxonomy.db`.
+```bash
+sh lib/add-nodes.sh raw_data/nodes.dmp taxonomy.db
 ```
 
 ### Validate the database
@@ -131,7 +170,7 @@ EOF
 Expected:
 - Both tables present
 - Row counts on the order of millions
-- One name per taxid
+- One name per taxid, or `SELECT COUNT(*) FROM nodes` <= `SELECT COUNT(*) FROM names`
 
 ---
 
