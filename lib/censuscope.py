@@ -102,13 +102,13 @@ def usr_args():
     parser.add_argument(
         "-q", '--query_path',
         required=True,
-        help="Input file name, accept fasta,fastq"
+        help="Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)"
     )
 
     parser.add_argument(
         "-d", '--database',
         required=True,
-        help="BLAST database name"
+        help="BLAST database path (e.g. /path/to/SlimNT"
     )
 
     if len(sys.argv) <= 1:
