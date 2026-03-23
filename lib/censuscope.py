@@ -108,7 +108,7 @@ def usr_args():
     parser.add_argument(
         "-d", '--database',
         required=True,
-        help="BLAST database path (e.g. /path/to/SlimNT"
+        help="BLAST database path (e.g. /path/to/SlimNT)"
     )
 
     if len(sys.argv) <= 1:
