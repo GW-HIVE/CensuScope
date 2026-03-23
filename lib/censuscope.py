@@ -125,15 +125,15 @@ def usr_args():
     return options
 
 def validate_query_file(query_path: str):
-	'''
+	"""
 	Check the input file existence, file extension, and content format(">". "@")
-	'''
-	# File existence
+	"""
+    # File existence
     if not os.path.isfile(query_path):
         raise FileNotFoundError(f"Input file not found: {query_path}")
-	
-	# Extension check
-	valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
+
+    # Extension check
+    valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
     _, ext = os.path.splitext(query_path)
     if ext.lower() not in valid_extensions:
         raise ValueError(
@@ -142,8 +142,8 @@ def validate_query_file(query_path: str):
             f"({', '.join(sorted(valid_extensions))})."
         )
 
-	# Content check
-	try:
+    # Content check
+    try:
         head_char = subprocess.run(
             f"head -n 1 {query_path} | cut -c1",
             shell=True,
@@ -577,16 +577,12 @@ def main():
     options = usr_args()
     logger.info(f"{options}")
 
-	try:
+    try:
         validate_query_file(global_state.query_path)
         validate_database(global_state.database)
     except (ValueError, FileNotFoundError) as e:
         logger.critical(f"Input validation failed: {e}")
         sys.exit(1)
-
-    global_state.query_path = fastq_to_fasta(
-        query_path=global_state.query_path
-    )
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path
