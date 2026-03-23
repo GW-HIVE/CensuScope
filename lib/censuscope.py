@@ -102,7 +102,7 @@ def usr_args():
     parser.add_argument(
         "-q", '--query_path',
         required=True,
-        help="Input file name"
+        help="Input file name, accept fasta,fastq"
     )
 
     parser.add_argument(
