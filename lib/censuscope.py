@@ -268,7 +268,7 @@ def fetch_taxonomy(unique_accessions: dict):
     taxid up to the root.
     """
     
-    db_file = 'taxonomy.db'
+    db_file = '/app/blastdb/taxonomy.db'
     tax_tree = {
         "0": {
             "taxid": 0,
