@@ -125,9 +125,9 @@ def usr_args():
     return options
 
 def validate_query_file(query_path: str):
-	"""
-	Check the input file existence, file extension, and content format(">". "@")
-	"""
+    """
+    Check the input file existence, file extension, and content format(">". "@")
+    """
     # File existence
     if not os.path.isfile(query_path):
         raise FileNotFoundError(f"Input file not found: {query_path}")
