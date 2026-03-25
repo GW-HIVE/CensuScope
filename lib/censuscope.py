@@ -18,6 +18,11 @@ from threading import Thread, Lock
 
 write_lock = Lock()
 
+def normalize_accession(acc: str) -> str:
+	if not acc:
+		return acc
+	return acc.split(".", 1)[0]
+
 __version__ = "0.1"
 __status__ = "BETA"
 
@@ -26,8 +31,8 @@ class GlobalState:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.start_time = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
-        # self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
-        self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
+        self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        # self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
         self.temp_dirs = {
             "random_samples": f"{self.temp_path}/random_samples",
             "results": f"{self.temp_path}/results",
@@ -230,11 +235,13 @@ def refine_blast_files(sample_size: int):
                 read_id = row[0]
                 if "|" in row[1]:
                     try:
-                        accession= row[1].split("|")[3]
+                        accession_raw = row[1].split("|")[3]
                     except IndexError as error:
-                        accession= row[1].split("|")[-1]
+                        accession_raw = row[1].split("|")[-1]
                 else:
-                    accession= row[1]
+                    accession_raw = row[1]
+
+                accession = normalize_accession(accession_raw)
                 
                 if accession not in unique_accessions:
                     unique_accessions.append(accession)

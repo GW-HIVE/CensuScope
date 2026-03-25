@@ -6,25 +6,31 @@
 - [Running the container via Docker](#running-the-container-via-docker)
 - [Pushing a new build to GitHub](#pushing-a-new-build-to-github)
 - [Pulling a Container from GitHub](#Pulling-a-container-from-github)
-### Requirements
-1. Python 3: [3.10.6 reccomended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
+  
+## Requirements
+1. Python ≥3.10.6. [3.10.6 recommended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
 2. [Docker](https://docs.docker.com/engine/install/)
     - Links if using Docker Desktop:
       - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
       - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
       - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-3. An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
-    - Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it
-    - Use `makeblastdb` to build a database
-      - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-      - Databses:
-        - [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
-        - [slimNT database](https://hive.biochemistry.gwu.edu/static/slimNT.fa.gz) (32.1GB compressed)
-        - [slimNT taxonomy](https://hive.biochemistry.gwu.edu/static/slimNT.db.gz) (16.8GB)
-    - Note that if you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
-        - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
+3. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
+
+### Databases
+The taxonomy database stores the taxonomic hierarchy and a single scientific name for each taxonomic identifier (taxid). CensuScope uses this database to map BLAST results to taxonomy and organize output by taxonomic rank, and the official Docker image includes a prebuilt version so users typically do not need to build it themselves. Note that taxonomy.db is hardcoded into the image; to use a custom one, copy it in yourself or point a mount to it.
+
+Use `makeblastdb` to build a database. 
+    - Downloading the files and building the database may take a lot of time. Plan ahead.
+    - [Install instructions](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+
+**Databases:**
+- Standard/Preferred is [NCBI's NT databases](https://www.ncbi.nlm.nih.gov/books/NBK52640/)
+- SlimNT is a custom database that our lab has created. The GitHub Repo can be found [here](https://github.com/GW-HIVE/slimNT).
+- Filtered_NT is another custom database from our lab. The GitHub Repo can be found [here](https://github.com/GW-HIVE/filtered_nt).
+        
+Note: If you build an NCBI taxonomy database that you may have to rename columns, as the script is expecting `taxid` (not `tax_id`) and `name`(not `name_txt`).
+    - E.g. `sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"`
 <br>
-Note: Downloading the files and building the database may take a lot of time. Plan ahead.
 
 ## Running via the command line
 ### Clone the repository
@@ -102,7 +108,7 @@ See [Running via the command line](#running-via-the-command-line) above for a br
 This will create a date-time named folder at the specified location `/path/to/temp_dirs` with all the intermediate and result files. 
 
 ## Pushing a new build to GitHub
-Publishing to GitHub requires a Public Access Token (PAT). See the [GitHub Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) for more information.
+Publishing to GitHub requires a Public Access Token (PAT). See the [GitHub Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) for more information. Please contact our lab at **mazumder_lab@gwu.edu** if you would like to push a new build to our GitHub.
 
 The preferred method is to add your PAT to a `bashrc` or equivalent file. 
     
