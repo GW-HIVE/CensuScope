@@ -9,8 +9,9 @@ CensuScope uses a **reduced taxonomy schema** derived from the NCBI taxonomy. Th
 1. [Purpose](#purpose)
 2. [Taxonomy DB Schema](#taxonomy-db-schema)
 3. [Required NCBI Tables](#required-ncbi-tables)
-4. [Build Taxonomy.db File](#build-taxonomydb-file)
+4. [Build Taxonomy.db File](#-build-taxonomydb-file) -> Step-by-step Instructions
 5. [Taxonomy.db Validation](#taxonomydb-validation)
+6. [Next Steps](#next-steps)
 
 ---
 
@@ -75,7 +76,7 @@ Exactly **one row per taxid** is retained. Only scientific names are included.
 
 ---
 
-## Build Taxonomy.db File
+## 🧬 Build Taxonomy.db File
 
 ### Process Overview
 
@@ -84,24 +85,68 @@ The taxonomy database must be built **prior to runtime** to be used. Because thi
 At a high level, the build process consists of:
 
 1. Creating a fresh SQLite database
-2. Creating the required tables (`nodes`, `names`)
+2. Creating the required tables (`nodes`, `names`, `hosts`)
 3. Loading taxonomy hierarchy from `nodes.dmp`
 4. Loading canonical scientific names from `names.dmp`
-5. Validating schema and basic integrity
+5. Loading host metadata from `host.dmp`
+6. Validating schema and basic integrity
 
 ### Build Scripts
 
-NCBI regularly updates their [FTP Taxonomy file site](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/) with minor edits, but we suggest updating your `taxonomy.md` file every 6 months to a year. 
-The following scripts are used to build the taxonomy database:
+NCBI regularly updates their [FTP Taxonomy file site](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/) with minor edits monthly, but we suggest updating your `taxonomy.md` file every _6 months to a year_. Since their updates are mostly minor and given the amount of time it takes to build the database, it is unnecessary to build a new one each time.
 
+The following scripts are used to build the taxonomy database:
 - `lib/download_data.sh`  
   This script downloads the required NCBI taxonomy and accession-to-taxid files needed to build the taxonomy.db database. It retrieves the latest versions from the NCBI FTP site. 
 - `lib/build_database.sh`  
   This script constructs the taxonomy.db database from the downloaded NCBI data files. It ensures required taxonomy files are extracted and then runs a series of steps to populate the database with accession, taxonomy structure, names, and host mappings.
   - `build_database.sh` script also utilizes the shell scripts, which can be found in /lib, `add-nodes.sh`, `add-names.sh`, and `add-hosts.sh` to process and load taxonomy hierarchy, scientific names, and host metadata into the database.
 
+Note: Scripts related to host metadata or other unused taxonomy features are considered legacy and are not part of the supported build process.
 
-Scripts related to host metadata or other unused taxonomy features are considered legacy and are not part of the supported build process.
+---
+
+### 🧬 Running the Build Scripts
+
+First, clone the CensuScope repository:
+```
+git clone https://github.com/GW-HIVE/CensuScope/
+```
+
+Navigate to the CensuScope directory
+```
+cd CensuScope
+```
+
+To download the required NCBI data files, run:
+```
+./lib/download_data.sh
+```
+
+- This step may take approximately **15–60 minutes** depending on network speed.
+
+The downloaded files will be placed in the `CensuScopeDB/` directory. Verify that the following files are present:
+
+- `nucl_gb.accession2taxid.gz`
+- `nucl_wgs.accession2taxid.EXTRA.gz`
+- `nucl_wgs.accession2taxid.gz`
+- `new_taxdump.tar.gz`
+  
+
+Once all files are confirmed, build the taxonomy database:
+```
+./lib/build_database.sh
+```
+- This step can take approximately **3–6 hours**. Plan accordingly.
+
+Once the `build_database.sh` script has finished running, verify that the `taxonomy.db` file has been created in the root `CensuScope/` directory:
+```
+ls -lh taxonomy.db
+```
+
+You should see a non-empty file (typically several GB in size). If the file is missing or empty, the build process may have failed and should be reviewed before proceeding.
+
+Note: The taxonomy.db file is in SQLite format and therefore not human-readable.
 
 ---
 
@@ -116,10 +161,7 @@ After building the taxonomy database, the following checks should be performed.
 PRAGMA table_info(nodes);
 PRAGMA table_info(names);
 ```
-
-Only the expected tables and columns should be present.
-
----
+- Only the expected tables and columns should be present.
 
 ### Row Counts
 
@@ -127,10 +169,7 @@ Only the expected tables and columns should be present.
 SELECT COUNT(*) FROM nodes;
 SELECT COUNT(*) FROM names;
 ```
-
-Both tables should contain non-zero rows. In a full NCBI build, counts will be on the order of millions.
-
----
+- Both tables should contain non-zero rows. In a full NCBI build, counts will be on the order of millions.
 
 ### Join Integrity
 
@@ -140,8 +179,7 @@ FROM nodes n
 LEFT JOIN names na ON n.taxid = na.taxid
 WHERE na.name IS NULL;
 ```
-
-The number of missing names should be minimal.
+- The number of missing names should be minimal.
 
 ---
 
@@ -155,34 +193,15 @@ FROM nodes n
 JOIN names na ON n.taxid = na.taxid
 LIMIT 10;
 ```
-
 If this query succeeds, the taxonomy database is compatible with CensuScope.
 
 ---
+## Next Steps
 
-## Relationship to Stochastic Execution
+Once the `taxonomy.db` database has been successfully built and validated, the next steps depend on your setup:
 
-The taxonomy database itself is static and deterministic. However, CensuScope execution is stochastic due to random sampling of sequencing reads. As a result, the same taxonomy database may produce different output summaries across runs.
+### If you do not yet have a BLAST database:
+- Follow the instructions in the BLAST database setup README to download and build the required database files.
 
-This behavior is expected and reflects the census-based design of the method.
-
----
-
-## Usage in Docker Images
-
-The official CensuScope Docker image ships with a **prebuilt taxonomy database** that conforms to this document. Users running the image do not need to build taxonomy locally.
-
-Custom builds may substitute a different taxonomy database, provided it adheres to the same reduced schema contract.
-
----
-
-## Change Policy
-
-Changes to the taxonomy schema or build process must be reflected in:
-
-- this document
-- the build scripts in `lib/`
-- the Docker image build process
-- the main `README.md`
-
-This document is the authoritative reference for the CensuScope taxonomy database.
+### If you already have both a BLAST database and `taxonomy.db`:
+- Proceed to the CensuScope Docker README for instructions on building and running the container.
