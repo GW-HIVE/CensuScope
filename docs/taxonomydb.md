@@ -5,6 +5,14 @@ This document describes the taxonomy database used by CensuScope: its purpose, s
 CensuScope uses a **reduced taxonomy schema** derived from the NCBI taxonomy. The reduced schema is a deliberate design choice aligned with how taxonomy is used during census-based sampling and aggregation.
 
 ---
+## Table of Contents
+1. [Purpose](#purpose)
+2. [Taxonomy DB Schema](#taxonomy-db-schema)
+3. [Required NCBI Tables](#required-ncbi-tables)
+4. [Build Taxonomy.db File](#build-taxonomydb-file)
+5. [Taxonomy.db Validation](#taxonomydb-validation)
+
+---
 
 ## Purpose
 
@@ -30,7 +38,17 @@ The taxonomy database is **not** used for:
 
 CensuScope intentionally does **not** use the full NCBI taxonomy schema. Only the tables required for hierarchical aggregation and labeling are included.
 
-### Required Tables
+### Required NCBI Tables
+
+### Source Data
+
+The taxonomy database is derived from the NCBI taxonomy dump files:
+
+- `nodes.dmp`
+- `names.dmp`
+- `hosts.dmp`
+
+Only records required to populate the reduced schema are extracted. In particular, only rows from `names.dmp` with `name_class == "scientific name"` are used.
 
 #### `nodes`
 
@@ -43,8 +61,6 @@ Stores the taxonomic hierarchy.
 | rank          | TEXT    | Taxonomic rank (e.g., species, genus)|
 
 Each taxid appears exactly once.
-
----
 
 #### `names`
 
@@ -59,20 +75,11 @@ Exactly **one row per taxid** is retained. Only scientific names are included.
 
 ---
 
-## Source Data
+## Build Taxonomy.db File
 
-The taxonomy database is derived from the NCBI taxonomy dump files:
+### Process Overview
 
-- `nodes.dmp`
-- `names.dmp`
-
-Only records required to populate the reduced schema are extracted. In particular, only rows from `names.dmp` with `name_class == "scientific name"` are used.
-
----
-
-## Build Process Overview
-
-The taxonomy database must be built **prior to runtime** to be used.
+The taxonomy database must be built **prior to runtime** to be used. Because this process can take a significant amount of time, it should be completed well in advance of running the Docker deployment.
 
 At a high level, the build process consists of:
 
@@ -82,25 +89,23 @@ At a high level, the build process consists of:
 4. Loading canonical scientific names from `names.dmp`
 5. Validating schema and basic integrity
 
-Build scripts live in the `lib/` directory and are intended to be run explicitly during setup or image construction.
+### Build Scripts
 
----
-
-## Build Scripts
-
+NCBI regularly updates their [FTP Taxonomy file site](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/) with minor edits, but we suggest updating your `taxonomy.md` file every 6 months to a year. 
 The following scripts are used to build the taxonomy database:
 
-- `lib/add-nodes.sh`  
-  Loads taxonomic hierarchy from `nodes.dmp` into the `nodes` table.
+- `lib/download_data.sh`  
+  This script downloads the required NCBI taxonomy and accession-to-taxid files needed to build the taxonomy.db database. It retrieves the latest versions from the NCBI FTP site. 
+- `lib/build_database.sh`  
+  This script constructs the taxonomy.db database from the downloaded NCBI data files. It ensures required taxonomy files are extracted and then runs a series of steps to populate the database with accession, taxonomy structure, names, and host mappings.
+  - `build_database.sh` script also utilizes the shell scripts, which can be found in /lib, `add-nodes.sh`, `add-names.sh`, and `add-hosts.sh` to process and load taxonomy hierarchy, scientific names, and host metadata into the database.
 
-- `lib/add-names.sh`  
-  Loads canonical scientific names from `names.dmp` into the `names` table.
 
 Scripts related to host metadata or other unused taxonomy features are considered legacy and are not part of the supported build process.
 
 ---
 
-## Validation
+## Taxonomy.db Validation
 
 After building the taxonomy database, the following checks should be performed.
 
