@@ -4,7 +4,7 @@
 - [Running via the command line](#running-via-the-command-line) -> Step-by-step Directions
 - [Building CensuScope via Docker](#building-censuscope-via-docker)
 - [Running the container via Docker](#running-the-container-via-docker)
-- [Results](#results)
+- [Output Results](#output-results)
 - [Reproducibility Notes](#reproducibility-notes)
   
 ## Requirements
@@ -156,7 +156,7 @@ Running this command will create a date-time named folder at the specified locat
 
 ---
 
-## Results
+## Output Results
 Once you have run the CensuScope Docker, the results and outputs will be in `/temp_dirs/` in your `CensuScope` directory. 
 ```
 cd temp_dirs/
