@@ -8,7 +8,7 @@ This README serves as an **overview** and **table of contents** for the document
 
 ## 🦒 Taxonomy Database Documentation
 
-This document, [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/taxonomydb.md), describes the taxonomy database used by CensuScope.
+This document, [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md), describes the taxonomy database used by CensuScope.
 
 - The taxonomy database provides the **taxonomic hierarchy and naming structure** used to interpret results.
 - It is treated as **static reference infrastructure** and is not modified during execution.
@@ -19,7 +19,7 @@ This document, [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/christ
 
 ## 💻 BLAST Database Documentation
 
-This document, [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/blast_database.md), describes the BLAST database used by CensuScope.
+This document, [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md), describes the BLAST database used by CensuScope.
 
 - The BLAST database is the **reference sequence database** used to align sequencing reads.
 - It is treated as **external, static input data** and must be prepared before execution.
@@ -31,7 +31,7 @@ This document, [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/ch
 
 ## 📤 Docker Deployment Guide (Primary)
 
-This document, [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/deployment/dockerDeployment.md), is the primary guide for running CensuScope in a Docker container.
+This document, [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md), is the primary guide for running CensuScope in a Docker container.
 
 - Explains how to build and run the CensuScope Docker image.
 - Describes required inputs, including:
