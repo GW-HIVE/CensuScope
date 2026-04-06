@@ -60,7 +60,7 @@ Common database options include:
 - **Filtered NT** (lab-specific filtered database)
   - The GitHub Repo to create or download `filter_nt.fa` can be found [here](https://github.com/GW-HIVE/filtered_nt).
  
-The README [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md) in the `docs` folder can provide more information and step-by-step directions.
+The README [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md) in the `docs` folder can provide more information and step-by-step directions.
 
 #### 🦒 **Taxonomy database** (internal, static)
 - SQLite database derived from the NCBI taxonomy
@@ -68,7 +68,7 @@ The README [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme
 - Provides taxonomic hierarchy and canonical names
 - Uses a reduced schema tailored to CensuScope’s lookup and aggregation needs
 
-The taxonomy.db file needs to be created prior to runtime by the user. See the [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md) README in `docs`.
+The taxonomy.db file needs to be created prior to runtime by the user. See the [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md) README in `docs`.
 
 <br>
  
@@ -91,7 +91,7 @@ The engine is stateless across runs aside from generated outputs. No persistent 
 
 Outputs are written to a designated output directory and may differ between runs even when inputs are identical.
 
-The [outputs]() are described in the [dockerDeployment.md]() README in `docs`. They are also described below.
+The [outputs](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md#output-results) are described in the [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md) README in `docs`. They are also summarized below.
 
 ---
 
@@ -106,13 +106,13 @@ These files are treated as **read-only inputs** during runtime and must be avail
 For step-by-step setup instructions in order of workflow, follow the documentation in this order:
 
 1. **Build the taxonomy database**  
-   See [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md)
+   See [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md)
 
 2. **Prepare or obtain a BLAST database**  
-   See [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md)
+   See [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md)
 
 3. **Build and run CensuScope with Docker**  
-   See [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/deployment/dockerDeployment.md)
+   See [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md)
 
 This documentation structure follows the same order as the CensuScope workflow: first prepare the taxonomy reference, then prepare the sequence reference database, and finally run the containerized pipeline.
 
@@ -134,4 +134,4 @@ The `results/` folder contains the main output files:
 These files represent the final results of a CensuScope run. Additional intermediate files (e.g., random samples and BLAST outputs) are stored in separate subdirectories but are not typically used for downstream analysis.
 
 For more details, see the  
-[dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/deployment/dockerDeployment.md).
+[dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md).
