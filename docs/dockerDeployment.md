@@ -5,6 +5,7 @@
 - [Building CensuScope via Docker](#building-censuscope-via-docker)
 - [Running the container via Docker](#running-the-container-via-docker)
 - [Results](#results)
+- [Reproducibility Notes](#reproducibility-notes)
   
 ## Requirements
 Software requirements needed to run the CensuScope Docker include:
@@ -170,10 +171,13 @@ cd into your newest directory from your  most recent CensuScope run. Inside ther
 ```
 
 ### blastn folder
+The NCBI Blast alignment results from the random samples can be found in this directory. There is one blast result file for each iteration. 
 
 ### inputs folder
+This is a temporary folder used to store temporary fastas for the CensuScope computation. This folder should be empty. 
 
 ### random_samples folder
+The random samples used to perform the CensuScope computation can be found in this directory. The random samples are in FASTA format. There is one random sample file for each iteration. 
 
 ### results folder
 The main results of the CensuScope computation can be found in this directory. The result files are:
