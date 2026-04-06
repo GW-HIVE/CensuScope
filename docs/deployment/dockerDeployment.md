@@ -4,7 +4,7 @@
 - [Running via the command line](#running-via-the-command-line) -> Step-by-step Directions
 - [Building CensuScope via Docker](#building-censuscope-via-docker)
 - [Running the container via Docker](#running-the-container-via-docker)
-- [Pushing a new build to GitHub](#pushing-a-new-build-to-github)
+- [Results](#results)
   
 ## Requirements
 Software requirements needed to run the CensuScope Docker include:
@@ -152,7 +152,43 @@ Running this command will create a date-time named folder at the specified locat
 
 ## Results
 Once you have run the CensuScope Docker, the results and outputs will be in `/temp_dirs/` in your `CensuScope` directory. 
+```
+cd temp_dirs/
+```
+An example of the newly created results directories:
+```
+2026_03_30_18.04.20
+2026_03_31_17.18.01
+2026_04_01_16.47.48
+```
+cd into your newest directory from your  most recent CensuScope run. Inside there will be 4 directories:
+```
+- blastn
+- inputs
+- random_samples
+- results
+```
 
-To pull from the GitHub Container Registry us the following:
+### blastn folder
 
-    docker pull ghcr.io/gw-hive/censuscope:2.0.1
+### inputs folder
+
+### random_samples folder
+
+### results folder
+The main results of the CensuScope computation can be found in this directory. The result files are:
+- `taxonomy_table.tsv` – aggregated taxonomic counts
+- `tax_tree.json` – hierarchical taxonomy tree
+- `censuscope.log` – execution log
+- `accession_table.tsv` - accessions and hit count results
+
+
+### Reproducibility Notes
+
+CensuScope uses random sampling by design.
+
+To reduce variability:
+- increase sample size
+- increase iteration count
+
+Exact reproducibility is not guaranteed and is not a design goal.
