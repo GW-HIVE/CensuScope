@@ -6,18 +6,18 @@ This README serves as an **overview** and **table of contents** for the document
 
 ---
 
-## Taxonomy Database Documentation
+## 🦒 Taxonomy Database Documentation
 
 This document, [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/taxonomydb.md), describes the taxonomy database used by CensuScope.
 
 - The taxonomy database provides the **taxonomic hierarchy and naming structure** used to interpret results.
 - It is treated as **static reference infrastructure** and is not modified during execution.
 - A valid `taxonomy.db` file is required for running CensuScope.
-- The document explains how the database is built from the NCBI taxonomy dump and how it is used for lineage mapping and result aggregation.
+- The document explains how the database is built from the NCBI taxonomy dump, how to build it yourself, and how it is used for lineage mapping and result aggregation.
 
 ---
 
-## BLAST Database Documentation
+## 💻 BLAST Database Documentation
 
 This document, [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/blast_database.md), describes the BLAST database used by CensuScope.
 
@@ -29,7 +29,7 @@ This document, [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/ch
 
 ---
 
-## Docker Deployment Guide (Primary)
+## 📤 Docker Deployment Guide (Primary)
 
 This document, [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/christie-readmes/docs/deployment/dockerDeployment.md), is the primary guide for running CensuScope in a Docker container.
 
@@ -39,12 +39,10 @@ This document, [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/
   - BLAST database
   - taxonomy database (`taxonomy.db`)
 - Provides commands for mounting input, database, and output directories.
-- Includes instructions for publishing and pulling images from GitHub Container Registry (GHCR).
-- Covers runtime behavior, configuration considerations, and troubleshooting.
 
 ---
 
-## How These Components Work Together
+## 🧬 How These Components Work Together
 
 CensuScope relies on three core components:
 
