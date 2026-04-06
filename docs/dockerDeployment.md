@@ -18,7 +18,8 @@ Software requirements needed to run the CensuScope Docker include:
 3. [NCBI Blast Command Line tool](https://www.ncbi.nlm.nih.gov/books/NBK569856/)
 4. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
      * Look to [taxonomy.db](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md) and [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md) README's for more information.
-<br>
+
+---
 
 ## Running via the command line
 ### Clone the repository
@@ -93,7 +94,8 @@ options:
   -d DATABASE, --database DATABASE
                         BLAST database name
 ```
-<br>
+
+---
 
 ## Building CensuScope via Docker
 
@@ -110,6 +112,7 @@ docker build -t  censuscope:tag .
 
 This will build a container named `censuscope:tag`. This name will be in input for the `docker run` command below.
 
+---
 
 ## Running the container via Docker
 
@@ -151,6 +154,8 @@ See [Running via the command line](#running-via-the-command-line) above for a br
 
 Running this command will create a date-time named folder at the specified location `/path/to/CensuScope/temp_dirs` with all the intermediate and result files. 
 
+---
+
 ## Results
 Once you have run the CensuScope Docker, the results and outputs will be in `/temp_dirs/` in your `CensuScope` directory. 
 ```
@@ -185,7 +190,8 @@ The main results of the CensuScope computation can be found in this directory. T
 - `tax_tree.json` – hierarchical taxonomy tree
 - `censuscope.log` – execution log
 - `accession_table.tsv` - accessions and hit count results
-
+- 
+---
 
 ### Reproducibility Notes
 
