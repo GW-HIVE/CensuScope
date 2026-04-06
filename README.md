@@ -3,6 +3,8 @@
 
 CensuScope is a tool for rapid taxonomic profiling of NGS metagenomic data using census-based sampling and BLAST-based alignment. It supports local CLI execution, containerized execution via Docker builds, or exicution via a prebuilt Docker image.
 
+---
+
 ## Table of Contents
 1.  [Overview](#overview)
 2.  [System Architecture](#system-architecture)
@@ -20,6 +22,8 @@ In the current implementation, alignment results are combined across sampled rea
 
 The Python-based CensuScope engine improves portability, supports containerized execution, and standardizes output formats, while maintaining the original algorithmic behavior and assumptions of the census-based approach.
 
+---
+
 ## System Architecture
 CensuScope is buit with a clear separation between static infrastructure, dynamic inputs, and generated outputs. This separation supports flexible execution (local or containerized), minimizes runtime assumptions, and makes the behavior of the system explicit.
 
@@ -31,13 +35,13 @@ At a high level, a CensuScope run consists of:
 4. Aggregating alignment evidence into taxonomic summaries
    
 ### Core components
-#### **FASTQ input** (dynamic, user-provided)
-- User-provided sequencing data in FASTQ format
+#### **FASTQ/A input** (dynamic, user-provided)
+- User-provided sequencing data in FASTQ or FASTA format
 - Treated as read-only input
 - May vary between runs and users
 - Randomly sampled during execution
 
-The FASTQ file is the primary source of variability between runs.
+The FASTQ file is the primary source of variability between runs. The code does account for FASTA and converts to FASTQ.
 
 #### **BLAST database** (external, static, user-provided)
 - User-provided nucleotide BLAST database
@@ -45,7 +49,17 @@ The FASTQ file is the primary source of variability between runs.
 - Not modified by CensuScope
 - May be shared across multiple runs and analyses
 
-CensuScope treats the BLAST database as a fixed reference against which sampled reads are aligned.
+CensuScope treats the BLAST database as a fixed reference against which sampled reads are aligned. 
+Common database options include:
+
+- **NCBI NT database** (standard, comprehensive)
+  - Use NCBI's [FTP BLAST Site](https://ftp.ncbi.nlm.nih.gov/blast/db/) to locate and download BLAST database files, including NT.
+- **SlimNT** (curated, reduced database)
+  - The GitHub Repo to create or download `slimNT.fa` can be found [here](https://github.com/GW-HIVE/slimNT).
+- **Filtered NT** (lab-specific filtered database)
+  - The GitHub Repo to create or download `filter_nt.fa` can be found [here](https://github.com/GW-HIVE/filtered_nt).
+ 
+The README [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md) in the `docs` folder can provide more information and step-by-step directions.
 
 #### **Taxonomy database** (internal, static)
 - SQLite database derived from the NCBI taxonomy
@@ -53,7 +67,7 @@ CensuScope treats the BLAST database as a fixed reference against which sampled 
 - Provides taxonomic hierarchy and canonical names
 - Uses a reduced schema tailored to CensuScope’s lookup and aggregation needs
 
-In containerized deployments, a prebuilt taxonomy database is shipped with the image
+The taxonomy.db file needs to be created prior to runtime by the user. See the [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md) README in `docs`.
 
 #### CensuScope Engine (Runtime)
 - Python-based execution engine
@@ -64,6 +78,7 @@ In containerized deployments, a prebuilt taxonomy database is shipped with the i
     - aggregation and reporting
 
 The engine is stateless across runs aside from generated outputs. No persistent state is carried between executions.
+
 #### **Output artifacts** (generated per run)
 - Per-run output files produced during execution
 - May include:
@@ -73,35 +88,30 @@ The engine is stateless across runs aside from generated outputs. No persistent 
 
 Outputs are written to a designated output directory and may differ between runs even when inputs are identical.
 
-### Architectural Principles
-The system architecture is guided by the following principles:
+The [outputs]() are described in the [dockerDeployment.md]() README in `docs`.
 
-- **Stochastic estimation**:
-    Each run produces a sampling-based estimate; variability across runs is expected.
-
-- **Separation of concerns**: 
-    Reference data, runtime inputs, and outputs are clearly separated.
-
-- **Portability**: 
-    The same architecture supports local execution and containerized deployment.
-
-- **Minimal runtime assumptions**:
-    All required reference data is resolved before execution begins.
-
-This architecture underpins the deployment and execution modes described later in this document.
-
+---
 
 ## Deployment
-CensuScope supports three officially supported deployment and execution modes. Each mode uses the same underlying architecture and execution logic, differing only in how the software and reference data are prepared and invoked.
+CensuScope requires two reference resources to be prepared before execution:
 
-All deployment modes assume that reference data (BLAST database and taxonomy database) are prepared ahead of execution and treated as read-only during runtime.
+1. a taxonomy database (`taxonomy.db`)
+2. a nucleotide BLAST database (such as SlimNT, filtered NT, or NCBI NT)
 
-**Notes on execution behavior**
-- CensuScope execution is stochastic by design.
-- Repeated runs with identical inputs may produce different outputs.
-- Differences between deployment modes affect environment setup, not algorithmic behavior.
+These files are treated as **read-only inputs** during runtime and must be available before running the workflow. Once both databases are prepared, CensuScope can be executed using the Docker deployment guide.
 
-Users should select a deployment mode based on their operational needs rather than expectations of output reproducibility.
+For step-by-step setup instructions for the CensuScope Workflow, follow the documentation in this order:
+
+1. **Build the taxonomy database**  
+   See [taxonomydb.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md)
+
+2. **Prepare or obtain a BLAST database**  
+   See [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md)
+
+3. **Build and run CensuScope with Docker**  
+   See [dockerDeployment.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/deployment/dockerDeployment.md)
+
+This documentation structure follows the same order as the CensuScope workflow: first prepare the taxonomy reference, then prepare the sequence reference database, and finally run the containerized pipeline.
 
 
 ## Output Files
