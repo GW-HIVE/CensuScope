@@ -201,7 +201,7 @@ If this query succeeds, the taxonomy database is compatible with CensuScope.
 Once the `taxonomy.db` database has been successfully built and validated, the next steps depend on your setup:
 
 ### If you do not yet have a BLAST database:
-- Follow the instructions in the BLAST database setup README to download and build the required database files.
+- Follow the instructions in the [BLAST database README](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md) to download and build the required database files.
 
 ### If you already have both a BLAST database and `taxonomy.db`:
-- Proceed to the CensuScope Docker README for instructions on building and running the container.
+- Proceed to the [CensuScope Docker Deployment README](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md) for instructions on building and running the container.
