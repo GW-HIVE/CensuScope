@@ -1,6 +1,8 @@
 # CensuScope
 CensuScope is a tool for rapid taxonomic profiling of NGS metagenomic data
 using census-based sampling and BLAST-based alignment. It supports local CLI execution, containerized execution via Docker builds, or exicution via a prebuilt Docker image.
+<img width="500" height="500" alt="scope" src="https://github.com/user-attachments/assets/16a39d8e-29ba-4e53-b677-7ecb4ae1500e" />
+
 
 ## Table of Contents
 1.  [Overview](#overview)
