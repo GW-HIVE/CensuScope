@@ -17,7 +17,7 @@ Software requirements needed to run the CensuScope Docker include:
       - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 3. [NCBI Blast Command Line tool](https://www.ncbi.nlm.nih.gov/books/NBK569856/)
 4. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
-     * Look to [taxonomy.db](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/taxonomydb.md) and [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md) README's for more information.
+     * Look to [taxonomy.db](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md) and [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md) README's for more information.
 
 ---
 
@@ -54,7 +54,7 @@ chmod 777 temp_dirs
 3. Move the `taxonomy.db` file into the `database` directory.
 
 ### MakeBlastDB Command
-If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/readme-updates-crw/docs/blast_database.md).
+If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md).
 
 Run `makeblastdb` to create the BLAST database:
 ```
@@ -190,7 +190,60 @@ The main results of the CensuScope computation can be found in this directory. T
 - `tax_tree.json` – hierarchical taxonomy tree
 - `censuscope.log` – execution log
 - `accession_table.tsv` - accessions and hit count results
-- 
+
+A sample of the `accession_table.tsv` is:
+```
+Accession	Total Hits	Iterations Present	Average Hits
+DS484556	1	1	0.004
+CP007120	3	1	0.012
+CP007103	2	2	0.008
+DS483562	1	1	0.004
+DS483905	1	1	0.004
+DS484341	2	1	0.008
+DS484668	2	2	0.008
+DS483753	1	1	0.004
+DS484538	1	1	0.004
+```
+
+A sample of the `taxonomy_table.tsv` is:
+```
+Taxid	Name	Percentage	Total Hits	Iterations Present	Full Lineage
+1890364	Planoprotostelium fungivorum	0.0	0	0	Eukaryota; Amoebozoa; Evosea; Variosea; Cavosteliida; Cavosteliaceae; Planoprotostelium; Planoprotostelium fungivorum
+1928728	Paulinella micropora	0.0	0	0	Eukaryota; Sar; Rhizaria; Cercozoa; Imbricatea; Silicofilosea; Euglyphida; Paulinellidae; Paulinella; Paulinella micropora
+7227	Drosophila melanogaster	0.984	246	3	Ephydroidea; Drosophilidae; Drosophilinae; Drosophilini; Drosophila; Sophophora; melanogaster group; melanogaster subgroup; Drosophila melanogaster
+2607653	Chitinophaga agrisoli	0.0	0	0	Bacteria; Pseudomonadati; FCB group; Bacteroidota/Chlorobiota group; Bacteroidota; Chitinophagia; Chitinophagales; Chitinophagaceae; Chitinophaga; Chitinophaga agrisoli
+1389932	Achromobacter pulmonis	0.0	0	0	Bacteria; Pseudomonadati; Pseudomonadota; Betaproteobacteria; Burkholderiales; Alcaligenaceae; Achromobacter; Achromobacter pulmonis
+1578198	Neobacillus notoginsengisoli	0.0	0	0	Bacteria; Bacillati; Bacillota; Bacilli; Bacillales; Bacillaceae; Neobacillus; Neobacillus notoginsengisoli
+1736310	Rhodococcus sp. Leaf258	0.0	0	0	Rhodococcus sp. Leaf258
+138073	Candidatus Regiella insecticola	0.0	0	0	ant, tsetse, mealybug, aphid, etc. endosymbionts; aphid secondary symbionts; Candidatus Regiella; Candidatus Regiella insecticola
+2026724	Chloroflexota bacterium	0.0	0	0	Chloroflexota bacterium
+```
+
+A sample of the `tax_tree.json` is:
+```
+{
+    "0": {
+        "taxid": 0,
+        "name": "unmatched",
+        "rank": null,
+        "children": null,
+        "accessions": []
+    },
+    "2759": {
+        "taxid": 2759,
+        "parent": 131567,
+        "name": "Eukaryota",
+        "rank": "domain",
+        "children": {
+            "33154": {
+                "taxid": 33154,
+                "parent": 2759,
+                "name": "Opisthokonta",
+                "rank": "clade",
+                "children": {
+                ...
+```
+
 ---
 
 ### Reproducibility Notes
