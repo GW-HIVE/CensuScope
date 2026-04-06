@@ -103,7 +103,7 @@ makeblastdb -version
 
 In order for CensuScope to use the BLAST reference, the FASTA file must be converted into an NCBI-recognized BLAST database using `makeblastdb`.
 
-If you have already cloned the repository, first create the required directories:
+If you have already cloned this CensuScope repository, first create the required directories, under the CensuScope directory:
 
 ```
 mkdir -p {inputs,temp_dirs,database}
@@ -131,6 +131,8 @@ This will generate files such as, which appear in a subdirectory your "-out" fla
 - `my_blast_db.nhr`
 
 These files collectively represent the BLAST database. This filepath will be the input to "--database" flag in your future `docker run` command.
+
+Note: The files created may separate into the `slimNT/` subdirectory and some in the `database/' subdirectory. The filepath for "--database" flag would point to the location that the **.nsq**, **.nin**, and **.nhr** files are located.
 
 ### Notes on Build Time
 
