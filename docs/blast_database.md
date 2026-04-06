@@ -163,4 +163,4 @@ If a genome or sequence is not present in the BLAST database, reads originating 
 Once your BLAST database is built:
 
 - If you still need to build `taxonomy.db`, follow the taxonomy database [README](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md). 
-- If both databases are ready, proceed to the CensuScope Docker or CLI execution guide.
+- If both databases are ready, proceed to the [CensuScope Docker Deployment README](https://github.com/GW-HIVE/CensuScope/blob/main/docs/dockerDeployment.md).
