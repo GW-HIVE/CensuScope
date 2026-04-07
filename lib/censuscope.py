@@ -125,13 +125,14 @@ def usr_args():
     return options
 
 def validate_query_file(query_path: str):
-	"""
-	Validate the input file.
-	1. Check if the file exists
-	2. Check the file extension is acceptable: FASTA or FASQ extension
-	3. Check the first character of the file to confirm the content
-	"""
-	# Check file existence
+    """
+	Check the input file existence, file extension, and content format(">". "@")
+    """
+    # File existence
+    if not os.path.isfile(query_path):
+        raise FileNotFoundError(f"Input file not found: {query_path}")
+
+    # Extension check
     valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
     _, ext = os.path.splitext(query_path)
     if ext.lower() not in valid_extensions:
@@ -141,7 +142,7 @@ def validate_query_file(query_path: str):
             f"({', '.join(sorted(valid_extensions))})."
         )
 
-    # Step 3: content check
+    # Content check
     try:
         head_char = subprocess.run(
             f"head -n 1 {query_path} | cut -c1",
@@ -167,12 +168,14 @@ def validate_query_file(query_path: str):
     logger.info(f"Input file validated: {query_path} (extension: {ext}, detected format: {detected_format})")
 
 def validate_database(database: str):
-	"""
-	Validate that the given path points to a valid BLAST nucleotide database
+    """
+    Validate that the given path points to a valid BLAST nucleotide database
     by checking for at least one expected index file extension.
-	"""
-	valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
-    found = [ext for ext in valid_db_extensions if os.path.isfile(database + ext)]
+    """
+    valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"} 
+    db_dir = os.path.dirname(database) 
+    found = [f for f in os.listdir(db_dir) if any(f.endswith(ext) for ext in valid_db_extensions)]
+    
     if not found:
         raise ValueError(
             f"No valid BLAST database files found at '{database}'. "
@@ -578,9 +581,14 @@ def main():
 
     try:
         validate_query_file(global_state.query_path)
-        validate_database(global_state.database)
     except (ValueError, FileNotFoundError) as e:
         logger.critical(f"Input validation failed: {e}")
+        sys.exit(1)
+
+    try:
+	    validate_database(global_state.database)
+    except ValueError as e:
+        logger.critical(f"Database validation failed: {e}")
         sys.exit(1)
 
     global_state.query_path = fastq_to_fasta(
