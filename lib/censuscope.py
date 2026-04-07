@@ -102,13 +102,13 @@ def usr_args():
     parser.add_argument(
         "-q", '--query_path',
         required=True,
-        help="Input file name"
+        help="Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)"
     )
 
     parser.add_argument(
         "-d", '--database',
         required=True,
-        help="BLAST database name"
+        help="BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)"
     )
 
     if len(sys.argv) <= 1:
@@ -124,6 +124,62 @@ def usr_args():
 
     return options
 
+def validate_query_file(query_path: str):
+	"""
+	Validate the input file.
+	1. Check if the file exists
+	2. Check the file extension is acceptable: FASTA or FASQ extension
+	3. Check the first character of the file to confirm the content
+	"""
+	# Check file existence
+    valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
+    _, ext = os.path.splitext(query_path)
+    if ext.lower() not in valid_extensions:
+        raise ValueError(
+            f"Unsupported input file format '{ext}'. "
+            f"CensusScope only accepts FASTA or FASTQ files "
+            f"({', '.join(sorted(valid_extensions))})."
+        )
+
+    # Step 3: content check
+    try:
+        head_char = subprocess.run(
+            f"head -n 1 {query_path} | cut -c1",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        ).stdout.strip()
+    except subprocess.CalledProcessError as e:
+        raise ValueError(f"Could not read input file '{query_path}': {e}")
+
+    if head_char == ">":
+        detected_format = "FASTA"
+    elif head_char == "@":
+        detected_format = "FASTQ"
+    else:
+        raise ValueError(
+            f"Input file '{query_path}' does not appear to be a valid FASTA or FASTQ file. "
+            f"Expected first character '>' (FASTA) or '@' (FASTQ), got '{head_char}'. "
+            f"Please check the file contents."
+        )
+
+    logger.info(f"Input file validated: {query_path} (extension: {ext}, detected format: {detected_format})")
+
+def validate_database(database: str):
+	"""
+	Validate that the given path points to a valid BLAST nucleotide database
+    by checking for at least one expected index file extension.
+	"""
+	valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
+    found = [ext for ext in valid_db_extensions if os.path.isfile(database + ext)]
+    if not found:
+        raise ValueError(
+            f"No valid BLAST database files found at '{database}'. "
+            f"Expected at least one of: {', '.join(sorted(valid_db_extensions))}. "
+            f"Please provide a valid NCBI nucleotide database path (e.g. nt or slimNT)."
+        )
+    logger.info(f"Database validated: {database} (found: {', '.join(found)})")
 
 def count_sequences(query_path: str) -> int:
     """
@@ -520,6 +576,12 @@ def main():
     options = usr_args()
     logger.info(f"{options}")
 
+    try:
+        validate_query_file(global_state.query_path)
+        validate_database(global_state.database)
+    except (ValueError, FileNotFoundError) as e:
+        logger.critical(f"Input validation failed: {e}")
+        sys.exit(1)
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path
