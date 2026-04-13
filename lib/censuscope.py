@@ -169,20 +169,27 @@ def validate_query_file(query_path: str):
 
 def validate_database(database: str):
     """
-    Validate that the given path points to a valid BLAST nucleotide database
-    by checking for at least one expected index file extension.
+    Validate that the given path points to a usable BLAST nucleotide database
+    by checking for the required core index files for the provided database prefix.
     """
-    valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"} 
-    db_dir = os.path.dirname(database) 
-    found = [f for f in os.listdir(db_dir) if any(f.endswith(ext) for ext in valid_db_extensions)]
-    
-    if not found:
+	required_extensions = [".nsi", ".nsd", ".nin", ".nsq", ".nhr"]
+    missing = []
+
+    for ext in required_extensions:
+        db_file = f"{database}{ext}"
+        if not os.path.isfile(db_file):
+            missing.append(db_file)
+
+    if missing:
         raise ValueError(
-            f"No valid BLAST database files found at '{database}'. "
-            f"Expected at least one of: {', '.join(sorted(valid_db_extensions))}. "
-            f"Please provide a valid NCBI nucleotide database path (e.g. nt or slimNT)."
+            "Incomplete BLAST database. Missing required files: "
+            + ", ".join(missing)
         )
-    logger.info(f"Database validated: {database} (found: {', '.join(found)})")
+
+    logger.info(
+        f"Database validated: {database} "
+        f"(found required files: {', '.join(database + ext for ext in required_extensions)})"
+    )
 
 def count_sequences(query_path: str) -> int:
     """
