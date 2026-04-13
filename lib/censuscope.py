@@ -172,7 +172,7 @@ def validate_database(database: str):
     Validate that the given path points to a usable BLAST nucleotide database
     by checking for the required core index files for the provided database prefix.
     """
-	required_extensions = [".nsi", ".nsd", ".nin", ".nsq", ".nhr"]
+    required_extensions = [".nsi", ".nsd", ".nin", ".nsq", ".nhr"]
     missing = []
 
     for ext in required_extensions:
