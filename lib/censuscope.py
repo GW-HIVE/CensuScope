@@ -170,25 +170,32 @@ def validate_query_file(query_path: str):
 def validate_database(database: str):
     """
     Validate that the given path points to a usable BLAST nucleotide database
-    by checking for the required core index files for the provided database prefix.
+    by checking for the required core index files for the provided database prefix(e.g. SlimNT, RefSeq, nt).
     """
-    required_extensions = [".nsi", ".nsd", ".nin", ".nsq", ".nhr"]
-    missing = []
+    valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
 
-    for ext in required_extensions:
-        db_file = f"{database}{ext}"
-        if not os.path.isfile(db_file):
-            missing.append(db_file)
+    db_dir = os.path.dirname(database)
+    db_prefix = os.path.basename(database)
 
-    if missing:
+    if not os.path.isdir(db_dir):
+        raise ValueError(f"Database directory not found: {db_dir}")
+
+    # find files that match prefix/extension
+    found = [
+        f for f in os.listdir(db_dir)
+        if f.startswith(db_prefix) and any(f.endswith(ext) for ext in valid_db_extensions)
+    ]
+
+    if not found:
         raise ValueError(
-            "Incomplete BLAST database. Missing required files: "
-            + ", ".join(missing)
+            f"No valid BLAST database files found for prefix '{db_prefix}' in '{db_dir}'. "
+            f"Expected files like: {db_prefix}.* with extensions "
+            f"{', '.join(sorted(valid_db_extensions))}."
         )
 
     logger.info(
         f"Database validated: {database} "
-        f"(found required files: {', '.join(database + ext for ext in required_extensions)})"
+        f"(found files: {', '.join(found[:5])}{'...' if len(found) > 5 else ''})"
     )
 
 def count_sequences(query_path: str) -> int:
