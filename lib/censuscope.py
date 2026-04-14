@@ -51,11 +51,32 @@ global_state = GlobalState()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.propagate = False
+
 log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
 
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# Full format for the log file
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# Cleaner format for terminal output
+stream_formatter = logging.Formatter(
+    '%(asctime)s - %(message)s'
+)
+
 file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(file_formatter)
+
+# Stream handler: only show important things in terminal
 stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.WARNING)
+stream_handler.setFormatter(stream_formatter)
+
+if logger.hasHandlers():
+    logger.handlers.clear()
+
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
@@ -102,13 +123,13 @@ def usr_args():
     parser.add_argument(
         "-q", '--query_path',
         required=True,
-        help="Input file name"
+        help="Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)"
     )
 
     parser.add_argument(
         "-d", '--database',
         required=True,
-        help="BLAST database name"
+        help="BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)"
     )
 
     if len(sys.argv) <= 1:
@@ -124,21 +145,94 @@ def usr_args():
 
     return options
 
+def validate_query_file(query_path: str):
+    """
+	Check the input file existence, file extension, and content format(">". "@")
+    """
+    # File existence
+    if not os.path.isfile(query_path):
+        raise FileNotFoundError(f"Input file not found: {query_path}")
+
+    # Extension check
+    valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
+    _, ext = os.path.splitext(query_path)
+    if ext.lower() not in valid_extensions:
+        raise ValueError(
+            f"Unsupported input file format '{ext}'. "
+            f"CensusScope only accepts FASTA or FASTQ files "
+            f"({', '.join(sorted(valid_extensions))})."
+        )
+
+    # Content check
+    try:
+        head_char = subprocess.run(
+            f"head -n 1 {query_path} | cut -c1",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        ).stdout.strip()
+    except subprocess.CalledProcessError as e:
+        raise ValueError(f"Could not read input file '{query_path}': {e}")
+
+    if head_char == ">":
+        detected_format = "FASTA"
+    elif head_char == "@":
+        detected_format = "FASTQ"
+    else:
+        raise ValueError(
+            f"Input file '{query_path}' does not appear to be a valid FASTA or FASTQ file. "
+            f"Expected first character '>' (FASTA) or '@' (FASTQ), got '{head_char}'. "
+            f"Please check the file contents."
+        )
+
+    logger.info(f"Input file validated: {query_path} (extension: {ext}, detected format: {detected_format})")
+
+def validate_database(database: str):
+    """
+    Validate that the given path points to a usable BLAST nucleotide database
+    by checking for the required core index files for the provided database prefix(e.g. SlimNT, RefSeq, nt).
+    """
+    valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
+
+    db_dir = os.path.dirname(database)
+    db_prefix = os.path.basename(database)
+
+    if not os.path.isdir(db_dir):
+        raise ValueError(f"Database directory not found: {db_dir}")
+
+    # find files that match prefix/extension
+    found = [
+        f for f in os.listdir(db_dir)
+        if f.startswith(db_prefix) and any(f.endswith(ext) for ext in valid_db_extensions)
+    ]
+
+    if not found:
+        raise ValueError(
+            f"No valid BLAST database files found for prefix '{db_prefix}' in '{db_dir}'. "
+            f"Expected files like: {db_prefix}.* with extensions "
+            f"{', '.join(sorted(valid_db_extensions))}."
+        )
+
+    logger.info(
+        f"Database validated: {database} "
+        f"(found files: {', '.join(found[:5])}{'...' if len(found) > 5 else ''})"
+    )
 
 def count_sequences(query_path: str) -> int:
     """
     Use grep to count the number of sequences in a file.
     """
-    logger.info(f"Counting sequences in {query_path}")
+    logger.warning(f"    Counting sequences in {query_path}")
     try:
         result = subprocess.run(['grep', '-c', '>', query_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         count = int(result.stdout.strip())
-        logger.info(f"{count} sequences in {query_path}")
+        logger.warning(f"    {count} sequences in {query_path}")
         return count
     except subprocess.CalledProcessError as e:
         logger.error(f"Error counting sequences: {e}")
         raise ValueError(f"Error counting sequences: {e}")
-
+    logger.warning(" ")
 
 def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
     """
@@ -147,13 +241,13 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
 
     random_samples_path = global_state.temp_dirs["random_samples"]
 
-    logger.info(f"Step 1: Determining how many reads we have")
+    logger.warning(f"Step 1: Determining how many reads we have")
     total_reads = count_sequences(query_path)  # Assuming count_sequences uses grep to count headers
-    logger.info(f"{total_reads} FASTA records")
+    logger.warning(f"    {total_reads} FASTA records")
 
     if total_reads > sample_size:
         logger.info("Subset file")
-        logger.info("Step 2: Generate random sample indices for each iteration (these are read indices, not line indices)")
+        logger.warning("Step 2: Generate random sample indices for each iteration (these are read indices, not line indices)")
 
         for it in range(1, iteration_count + 1):
             logger.info(f"{it}- out of {iteration_count}: ")
@@ -177,14 +271,14 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
                 logger.exception(f"Error during awk execution: {e}")
 
     else:
-        logger.info("Whole file requested, no iterations.")
+        logger.warning("Whole file requested, no iterations.")
         subprocess.run(f"cp {query_path} " + global_state.temp_dirs["random_samples"], shell=True)
+    logger.warning("")
 
 
 def blastn(database):
     """Run BLAST
-    
-    Options: 
+    Options:
         -outfmt 6 -num_threads 10 -evalue 1e-6 -max_target_seqs 10 -perc_identity 80 -max_hsps 1
     """
 
@@ -204,9 +298,8 @@ def blastn(database):
 
         logger.info(f"{now}: Start result_{identifier}.txt\n\t{blast_command}")
         subprocess.run(blast_command, shell=True)
-        logger.info(f"Finished result_{identifier}.txt")
+        logger.warning(f"Finished blastn for {random_sample}, output is result_{identifier}.txt")
         logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
-
 
 def refine_blast_files(sample_size: int):
     """
@@ -214,8 +307,8 @@ def refine_blast_files(sample_size: int):
     Use multithreading to process multiple files concurrently.
     Track hit counts across all files and calculate averages.
     """
-
-    logger.info("Refining BLAST results")
+    logger.warning("----------------------")
+    logger.warning("Refining BLAST results")
     logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     blastn_path =  global_state.temp_dirs["blastn"]
     blast_results = next(os.walk(blastn_path), (None, None, []))[2]
@@ -242,7 +335,7 @@ def refine_blast_files(sample_size: int):
                     accession_raw = row[1]
 
                 accession = normalize_accession(accession_raw)
-                
+
                 if accession not in unique_accessions:
                     unique_accessions.append(accession)
 
@@ -255,7 +348,7 @@ def refine_blast_files(sample_size: int):
 
         for accession, hit_count in tax_data.items():
             if hit_count == 0 and accession != "unaligned":
-                logger.warning(f"Zero hit count for accession {accession}")
+                logger.warning(f"Zero hit count for accession '{accession}'")
             overall_hits[accession].append(hit_count)
 
     tax_tree = fetch_taxonomy(unique_accessions)
@@ -441,13 +534,13 @@ def write_final_table(overall_hits, tax_tree):
     Calculate the average hit count for each GB accession and write the final output.
     # TODO: iterations will cease if no new organizm is found - OPTIONAL 
     """
-    logger.info("Writing final results")
+    logger.warning("Writing final results")
     logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     results_path = global_state.temp_dirs["results"]
     total_hits = sum([sum(hits) for hits in overall_hits.values()])  # Total hits across all accessions
     taxonomy_table = []
     accession_table = []
-    
+
     for accession, hits in overall_hits.items():
 
         hit_sum = sum(hits)
@@ -479,7 +572,6 @@ def fastq_to_fasta(query_path):
     """
 
     output_fasta = global_state.temp_dirs["inputs"]+"/temp.fasta"
-
     head_command = f"head -n 1 {query_path} | cut -c1"
     try:
         head_char = subprocess.run(
@@ -493,14 +585,13 @@ def fastq_to_fasta(query_path):
         logger.exception(f"Error counting sequences: {e}")
         return 0
 
-    
     if head_char == ">":
         return query_path
 
     elif head_char == "@":
         try:
             subprocess.run(f"seqtk seq -a {query_path} > {output_fasta}", shell=True, check=True)
-            logger.info(f"Conversion complete: {output_fasta}")
+            logger.warning(f"Conversion from FASTA to FASTQ complete: {output_fasta}")
             return output_fasta
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Error during conversion: {e}")
@@ -518,7 +609,19 @@ def main():
     logger.info("FileHandler created successfully.")
     options = usr_args()
     logger.info(f"{options}")
+    logger.warning("")
 
+    try:
+        validate_query_file(global_state.query_path)
+    except (ValueError, FileNotFoundError) as e:
+        logger.critical(f"Input validation failed: {e}")
+        sys.exit(1)
+
+    try:
+	    validate_database(global_state.database)
+    except ValueError as e:
+        logger.critical(f"Database validation failed: {e}")
+        sys.exit(1)
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path
