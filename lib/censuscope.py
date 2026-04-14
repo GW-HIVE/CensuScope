@@ -254,12 +254,11 @@ def refine_blast_files(sample_size: int):
             tax_data["unaligned"] = sample_size - iteration_hits
 
         for accession, hit_count in tax_data.items():
-            if hit_count == 0:
-                logger.exception(f"Error with hit count for accession {accession}!")
+            if hit_count == 0 and accession != "unaligned":
+                logger.warning(f"Zero hit count for accession {accession}")
             overall_hits[accession].append(hit_count)
 
     tax_tree = fetch_taxonomy(unique_accessions)
-    
     write_final_table(overall_hits, tax_tree)
 
 
