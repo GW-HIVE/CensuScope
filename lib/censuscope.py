@@ -187,6 +187,7 @@ def validate_query_file(query_path: str):
         with open(query_path, "r") as f:
             expecting_sequence = False
             record_count = 0
+			current_header = None
 
             for line_num, line in enumerate(f, start=1):
                 stripped = line.strip()
@@ -198,7 +199,7 @@ def validate_query_file(query_path: str):
                     if expecting_sequence:
                         raise ValueError(
                             f"Invalid FASTA file '{query_path}': "
-                            f"previous header has no sequence before line {line_num}. "
+                            f"header '{current_header}' has no sequence. "
                             f"Please check your input file and make sure every '>' header "
                             f"is followed by a valid nucleotide sequence."
                         )
