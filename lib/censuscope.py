@@ -203,11 +203,11 @@ def validate_query_file(query_path: str):
                             f"Please check your input file and make sure every '>' header "
                             f"is followed by a valid nucleotide sequence."
                         )
-                
+
                     record_count += 1
                     expecting_sequence = True
                     current_header = stripped
-					
+
                 else:
                     if not valid_nucleotide_regex.fullmatch(stripped):
                         raise ValueError(
