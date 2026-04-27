@@ -187,7 +187,7 @@ def validate_query_file(query_path: str):
         with open(query_path, "r") as f:
             expecting_sequence = False
             record_count = 0
-			current_header = None
+            current_header = None
 
             for line_num, line in enumerate(f, start=1):
                 stripped = line.strip()
