@@ -203,17 +203,12 @@ def validate_query_file(query_path: str):
                             f"Please check your input file and make sure every '>' header "
                             f"is followed by a valid nucleotide sequence."
                         )
-
+                
                     record_count += 1
                     expecting_sequence = True
-
+                    current_header = stripped
+					
                 else:
-                    if record_count == 0:
-                        raise ValueError(
-                            f"Invalid FASTA file '{query_path}': "
-                            f"sequence found before any '>' header at line {line_num}."
-                        )
-
                     if not valid_nucleotide_regex.fullmatch(stripped):
                         raise ValueError(
                             f"Invalid FASTA file '{query_path}': "
@@ -298,11 +293,11 @@ def validate_query_file(query_path: str):
                 raise ValueError(f"Invalid FASTQ file '{query_path}': no records found.")
 
     else:
-        head_char = first_line[:1]
         raise ValueError(
-            f"Input file '{query_path}' does not appear to be a valid FASTA or FASTQ file. "
-            f"Expected first character '>' (FASTA) or '@' (FASTQ), got '{head_char}'. "
-            f"Please check the file contents."
+            f"Invalid input file '{query_path}': "
+            f"the first non-empty line does not start with '>' (FASTA) or '@' (FASTQ). "
+            f"Please check your input file. Remove any unnecessary text before the first sequence, "
+            f"or ensure each sequence has a proper header ('>' for FASTA or '@' for FASTQ)."
         )
 
     logger.info(
