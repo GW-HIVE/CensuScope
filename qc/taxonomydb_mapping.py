@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 """
-taxonomydb_mapping.py
-
 This script verifies whether title-derived sequence identifiers from a FASTA
 database file, such as slimNT.fa, are present in the CensuScope taxonomy.db
 accession_taxid table.
@@ -13,14 +11,8 @@ Verification checks include:
 - batch lookup of extracted accessions in taxonomy.db
 - mapping coverage between FASTA-derived accessions and taxonomy.db
 
-This script does NOT load the full taxonomy.db accession_taxid table into memory.
-
-A detailed mapping verification report is written to:
-qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
-
-If missing accessions are found, they are written to:
-qc/qc_reports/missing_accessions_TIMESTAMP.txt
-
+A detailed mapping verification report is written to: qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
+If missing accessions are found, they are written to: qc/qc_reports/missing_accessions_TIMESTAMP.txt
 If no missing accessions are found, no missing_accessions file is created.
 """
 
