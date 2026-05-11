@@ -437,10 +437,10 @@ def main():
     parser.add_argument(
         "--max-show",
         type=int,
-        default=100,
+        default=50,
         help=(
             "Maximum number of missing accessions shown "
-            "in the report. Default: 100"
+            "in the report. Default: 50"
         ),
     )
 
