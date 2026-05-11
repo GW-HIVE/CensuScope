@@ -13,6 +13,8 @@ Verification checks include:
 
 A detailed mapping verification report is written to: qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
 If missing accessions are found, they are written to: qc/qc_reports/missing_accessions_TIMESTAMP.txt
+
+The missing accessions output includes both the extracted accession and the original FASTA header.
 If no missing accessions are found, no missing_accessions file is created.
 """
 
@@ -109,11 +111,13 @@ def extract_accession_from_header(header):
 def extract_fasta_accessions(fasta_file):
     """
     Extract unique title-derived accessions from FASTA headers.
+    Also store the original FASTA header for each extracted accession.
     """
     if not os.path.isfile(fasta_file):
         raise FileNotFoundError(f"FASTA file not found: {fasta_file}")
 
     accessions = set()
+    header_lookup = {}
     skipped_headers = 0
     total_headers = 0
 
@@ -122,14 +126,16 @@ def extract_fasta_accessions(fasta_file):
             if line.startswith(">"):
                 total_headers += 1
 
-                accession = extract_accession_from_header(line)
+                header = line.strip()
+                accession = extract_accession_from_header(header)
 
                 if accession:
                     accessions.add(accession)
+                    header_lookup[accession] = header
                 else:
                     skipped_headers += 1
 
-    return sorted(accessions), total_headers, skipped_headers
+    return sorted(accessions), header_lookup, total_headers, skipped_headers
 
 
 def chunk_list(items, chunk_size):
@@ -178,6 +184,24 @@ def remove_internal_blast_ids(accessions):
     ]
 
 
+def format_missing_accession_lines(missing_accessions, header_lookup):
+    """
+    Format missing accession output with accession and original FASTA header.
+
+    Output format:
+    accession<TAB>original_header
+    """
+    output_lines = [
+        "accession\tfasta_header"
+    ]
+
+    for accession in missing_accessions:
+        header = header_lookup.get(accession, "")
+        output_lines.append(f"{accession}\t{header}")
+
+    return output_lines
+
+
 def verify_mapping(
     fasta_file,
     taxonomy_db,
@@ -199,7 +223,7 @@ def verify_mapping(
             report_lines
         )
 
-        fasta_accessions, total_headers, skipped_headers = (
+        fasta_accessions, header_lookup, total_headers, skipped_headers = (
             extract_fasta_accessions(fasta_file)
         )
 
@@ -337,7 +361,12 @@ def verify_mapping(
         for accession in missing_accessions[:max_show]:
             log(accession, report_lines)
 
-        write_file(missing_output, missing_accessions)
+        missing_output_lines = format_missing_accession_lines(
+            missing_accessions,
+            header_lookup
+        )
+
+        write_file(missing_output, missing_output_lines)
 
         missing_file_created = missing_output
 
@@ -437,10 +466,10 @@ def main():
     parser.add_argument(
         "--max-show",
         type=int,
-        default=50,
+        default=20,
         help=(
             "Maximum number of missing accessions shown "
-            "in the report. Default: 50"
+            "in the report. Default: 20"
         ),
     )
 
