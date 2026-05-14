@@ -9,7 +9,8 @@ CensuScope is a tool for rapid taxonomic profiling of NGS metagenomic data using
 1.  [Overview](#overview)
 2.  [System Architecture](#system-architecture)
 3.  [Deployment](#deployment)
-4.  [Output Files](#output-files)
+4.  [Taxonomy QC(optional)](#qc-verification-optional)
+5.  [Output Files](#output-files)
 
 ## Overview
 CensuScope is a tool for estimating the taxonomic composition of metagenomic sequencing data using census-based sampling and alignment. Instead of analyzing every read in a dataset, CensuScope repeatedly samples subsets of reads and aligns them against reference databases to infer which organisms are present and at what relative levels.
@@ -119,6 +120,28 @@ This documentation structure follows the same order as the CensuScope workflow: 
 _Note_: At the time of this release only a CLI CensuScope Docker is available. We are currently working on providing a containerized version for users.
 
 ---
+## QC Verification (Optional)
+
+CensuScope also includes optional QC verification scripts for validating database structure and BLAST database-to-taxonomy mapping coverage.
+
+These scripts are intended primarily for:
+- initial database setup
+- database rebuilds or updates
+- troubleshooting taxonomy-related issues
+
+The QC framework includes:
+- `taxonomydb_verification.py`
+  - validates taxonomy database structure and integrity
+- `taxonomydb_mapping.py`
+  - validates BLAST database-to-taxonomy mapping coverage
+
+QC verification is OPTIONAL and is not required for normal CensuScope execution.
+
+---
+
+See:
+- [qc/README.md](https://github.com/GW-HIVE/CensuScope/blob/main/qc/README.md)
+- [lib/README.MD](https://github.com/GW-HIVE/CensuScope/blob/main/lib/README.MD)
 
 ## Output Files
 
