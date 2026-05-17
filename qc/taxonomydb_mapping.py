@@ -1,26 +1,15 @@
 #!/usr/bin/env python3
 
 """
-This script verifies whether title-derived sequence identifiers from a FASTA
-database file, such as slimNT.fa, are present in the CensuScope taxonomy.db
+This script verifies whether sequence identifiers from an indexed BLAST
+nucleotide database, such as slimNT, are present in the CensuScope taxonomy.db
 accession_taxid table.
-
-Verification checks include:
-- FASTA header parsing
-- title-derived accession extraction
-- batch lookup of extracted accessions in taxonomy.db
-- mapping coverage between FASTA-derived accessions and taxonomy.db
-
-A detailed mapping verification report is written to: qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
-If missing accessions are found, they are written to: qc/qc_reports/missing_accessions_TIMESTAMP.txt
-
-The missing accessions output includes both the extracted accession and the original FASTA header.
-If no missing accessions are found, no missing_accessions file is created.
 """
 
 import argparse
 import os
 import sqlite3
+import subprocess
 from datetime import datetime
 
 
@@ -51,7 +40,7 @@ def write_file(output_file, lines):
 
 def print_final_message(status_message, report_file, missing_file=None):
     print(status_message)
-    print("FASTA-taxonomy mapping verification completed.")
+    print("BLAST database-taxonomy mapping verification completed.")
     print(f"See report: {report_file}")
 
     if missing_file:
@@ -82,60 +71,86 @@ def is_internal_blast_id(accession):
     return False
 
 
-def extract_accession_from_header(header):
+def extract_blastdb_accessions(blast_db):
     """
-    Extract accession from the first token of a FASTA header.
+    Extract unique accessions and FASTA-style titles from the indexed BLAST database.
 
-    Example:
-    >AAILSW010000053.1 Salmonella enterica ...
+    This uses blastdbcmd, so it checks the accessions that BLAST can actually
+    return during CensuScope alignment.
 
-    Extracted:
-    AAILSW010000053
+    This works best when the BLAST database was built with -parse_seqids.
     """
-    header = header.strip()
+    cmd = [
+        "blastdbcmd",
+        "-db", blast_db,
+        "-entry", "all",
+        "-outfmt", "%a %t",
+    ]
 
-    if header.startswith(">"):
-        header = header[1:].strip()
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "blastdbcmd was not found. Please make sure NCBI BLAST+ "
+            "is installed and available in your PATH."
+        )
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr.strip() if e.stderr else str(e)
 
-    if not header:
-        return None
-
-    first_token = header.split()[0]
-
-    if is_internal_blast_id(first_token):
-        return None
-
-    return normalize_accession(first_token)
-
-
-def extract_fasta_accessions(fasta_file):
-    """
-    Extract unique title-derived accessions from FASTA headers.
-    Also store the original FASTA header for each extracted accession.
-    """
-    if not os.path.isfile(fasta_file):
-        raise FileNotFoundError(f"FASTA file not found: {fasta_file}")
+        raise RuntimeError(
+            "Failed to extract accessions from BLAST database using "
+            f"blastdbcmd. Error: {error_message}"
+        )
 
     accessions = set()
-    header_lookup = {}
-    skipped_headers = 0
-    total_headers = 0
+    accession_lookup = {}
+    skipped_accessions = 0
+    total_entries = 0
 
-    with open(fasta_file, "r") as f:
-        for line in f:
-            if line.startswith(">"):
-                total_headers += 1
+    for line in result.stdout.splitlines():
+        line = line.strip()
 
-                header = line.strip()
-                accession = extract_accession_from_header(header)
+        if not line:
+            continue
 
-                if accession:
-                    accessions.add(accession)
-                    header_lookup[accession] = header
-                else:
-                    skipped_headers += 1
+        total_entries += 1
 
-    return sorted(accessions), header_lookup, total_headers, skipped_headers
+        parts = line.split(" ", 1)
+        original_accession = parts[0]
+
+        if len(parts) > 1:
+            title = parts[1]
+        else:
+            title = ""
+
+        if is_internal_blast_id(original_accession):
+            skipped_accessions += 1
+            continue
+
+        normalized = normalize_accession(original_accession)
+
+        if is_internal_blast_id(normalized):
+            skipped_accessions += 1
+            continue
+
+        accessions.add(normalized)
+
+        if title:
+            accession_lookup[normalized] = f">{original_accession} {title}"
+        else:
+            accession_lookup[normalized] = f">{original_accession}"
+
+    return (
+        sorted(accessions),
+        accession_lookup,
+        total_entries,
+        skipped_accessions,
+    )
 
 
 def chunk_list(items, chunk_size):
@@ -184,26 +199,27 @@ def remove_internal_blast_ids(accessions):
     ]
 
 
-def format_missing_accession_lines(missing_accessions, header_lookup):
+def format_missing_accession_lines(missing_accessions, accession_lookup):
     """
-    Format missing accession output with accession and original FASTA header.
+    Format missing accession output with normalized accession and full
+    FASTA-style BLAST database header.
 
     Output format:
-    accession<TAB>original_header
+    accession<TAB>blastdb_header
     """
     output_lines = [
-        "accession\tfasta_header"
+        "accession\tblastdb_header"
     ]
 
     for accession in missing_accessions:
-        header = header_lookup.get(accession, "")
-        output_lines.append(f"{accession}\t{header}")
+        blastdb_header = accession_lookup.get(accession, "")
+        output_lines.append(f"{accession}\t{blastdb_header}")
 
     return output_lines
 
 
 def verify_mapping(
-    fasta_file,
+    blast_db,
     taxonomy_db,
     report_file,
     missing_output,
@@ -213,37 +229,52 @@ def verify_mapping(
     report_lines = []
     warnings = []
 
-    log("===== FASTA-Taxonomy Mapping Verification Report =====", report_lines)
-    log(f"FASTA file: {fasta_file}", report_lines)
+    log(
+        "===== BLAST Database-Taxonomy Mapping Verification Report =====",
+        report_lines,
+    )
+
+    log(f"BLAST database: {blast_db}", report_lines)
     log(f"taxonomy.db: {taxonomy_db}", report_lines)
 
     try:
         log(
-            "\nExtracting title-derived accessions from FASTA headers...",
-            report_lines
+            "\nExtracting accessions and titles from BLAST database "
+            "using blastdbcmd...",
+            report_lines,
         )
 
-        fasta_accessions, header_lookup, total_headers, skipped_headers = (
-            extract_fasta_accessions(fasta_file)
-        )
+        (
+            blastdb_accessions,
+            accession_lookup,
+            total_entries,
+            skipped_accessions,
+        ) = extract_blastdb_accessions(blast_db)
 
-        total_fasta = len(fasta_accessions)
-
-        log(f"Total FASTA headers found: {total_headers}", report_lines)
+        total_blastdb = len(blastdb_accessions)
 
         log(
-            f"Unique title-derived accessions extracted: {total_fasta}",
-            report_lines
+            f"Total BLAST database entries returned: {total_entries}",
+            report_lines,
         )
 
         log(
-            f"Headers skipped during accession extraction: {skipped_headers}",
-            report_lines
+            f"Unique BLAST database accessions extracted: "
+            f"{total_blastdb}",
+            report_lines,
         )
 
-        if total_fasta == 0:
+        log(
+            f"Accessions skipped during extraction: "
+            f"{skipped_accessions}",
+            report_lines,
+        )
+
+        if total_blastdb == 0:
             raise RuntimeError(
-                "No accessions were extracted from the FASTA file."
+                "No accessions were extracted from the BLAST database. "
+                "This usually means the database was built without "
+                "-parse_seqids."
             )
 
         if not os.path.isfile(taxonomy_db):
@@ -253,7 +284,7 @@ def verify_mapping(
 
         log(
             "\nChecking extracted accessions against taxonomy.db in batches...",
-            report_lines
+            report_lines,
         )
 
         log(f"Batch size: {batch_size}", report_lines)
@@ -264,7 +295,7 @@ def verify_mapping(
         missing_accessions = []
 
         for batch_number, batch in enumerate(
-            chunk_list(fasta_accessions, batch_size),
+            chunk_list(blastdb_accessions, batch_size),
             start=1,
         ):
             found = lookup_accessions_in_taxonomy_db(cursor, batch)
@@ -277,77 +308,121 @@ def verify_mapping(
             if batch_number % 100 == 0:
                 log(
                     f"Processed "
-                    f"{min(batch_number * batch_size, total_fasta)} "
-                    f"of {total_fasta} extracted accessions...",
+                    f"{min(batch_number * batch_size, total_blastdb)} "
+                    f"of {total_blastdb} extracted accessions...",
                     report_lines,
                 )
 
         conn.close()
 
     except Exception as e:
+        error_message = str(e)
+
+        if "-parse_seqids" in error_message:
+            log(
+                "\nWARNING: No usable accession IDs were extracted from "
+                "the BLAST database.",
+                report_lines,
+            )
+
+            log(
+                "This BLAST database was likely built without "
+                "-parse_seqids.",
+                report_lines,
+            )
+
+            log(
+                "Rebuild the database using:",
+                report_lines,
+            )
+
+            log(
+                "makeblastdb -in INPUT.fa -dbtype nucl "
+                "-parse_seqids -out DATABASE_NAME",
+                report_lines,
+            )
+
+            log("\n===== Summary =====", report_lines)
+
+            log(
+                "WARNING: BLAST database-taxonomy mapping verification "
+                "completed with missing accessions.",
+                report_lines,
+            )
+
+            write_file(report_file, report_lines)
+
+            print_final_message(
+                "WARNING: BLAST database-taxonomy mapping verification "
+                "completed with missing accessions.",
+                report_file,
+            )
+
+            return 0
+
         log(f"\nFAIL: {e}", report_lines)
 
         log("\n===== Summary =====", report_lines)
 
         log(
-            "FAIL: FASTA-taxonomy mapping verification failed.",
-            report_lines
+            "FAIL: BLAST database-taxonomy mapping verification failed.",
+            report_lines,
         )
 
         write_file(report_file, report_lines)
 
         print_final_message(
-            "FAIL: FASTA-taxonomy mapping verification failed.",
+            "FAIL: BLAST database-taxonomy mapping verification failed.",
             report_file,
         )
 
         return 1
 
-    # Final safety filter
     missing_accessions = remove_internal_blast_ids(
         missing_accessions
     )
 
     total_missing = len(missing_accessions)
-    total_mapped = total_fasta - total_missing
+    total_mapped = total_blastdb - total_missing
 
-    if total_fasta == 0:
+    if total_blastdb == 0:
         missing_percent = 0
     else:
-        missing_percent = total_missing / total_fasta * 100
+        missing_percent = total_missing / total_blastdb * 100
 
     log("\n===== Mapping Summary =====", report_lines)
 
     log(
-        f"Total unique title-derived accessions checked: {total_fasta}",
-        report_lines
+        f"Total unique BLAST database accessions checked: "
+        f"{total_blastdb}",
+        report_lines,
     )
 
     log(
         f"Mapped in taxonomy.db: {total_mapped}",
-        report_lines
+        report_lines,
     )
 
     log(
         f"Missing from taxonomy.db: {total_missing}",
-        report_lines
+        report_lines,
     )
 
     log(
         f"Missing percentage: {missing_percent:.2f}%",
-        report_lines
+        report_lines,
     )
 
     missing_file_created = None
 
     if total_missing > 0:
         warnings.append(
-            f"{total_missing} title-derived accessions are "
+            f"{total_missing} BLAST database accessions are "
             f"missing from taxonomy.db"
         )
 
         log(
-            "\nWARNING: Some title-derived accessions are "
+            "\nWARNING: Some BLAST database accessions are "
             "missing from taxonomy.db.",
             report_lines,
         )
@@ -363,7 +438,7 @@ def verify_mapping(
 
         missing_output_lines = format_missing_accession_lines(
             missing_accessions,
-            header_lookup
+            accession_lookup,
         )
 
         write_file(missing_output, missing_output_lines)
@@ -373,14 +448,14 @@ def verify_mapping(
         log(
             f"\nFull missing accession list written to: "
             f"{missing_output}",
-            report_lines
+            report_lines,
         )
 
     else:
         log(
-            "\nPASS: all title-derived accessions are found "
+            "\nPASS: all BLAST database accessions are found "
             "in taxonomy.db",
-            report_lines
+            report_lines,
         )
 
         if os.path.exists(missing_output):
@@ -395,25 +470,25 @@ def verify_mapping(
             log(f"- {warning}", report_lines)
 
         log(
-            "\nWARNING: FASTA-taxonomy mapping verification "
+            "\nWARNING: BLAST database-taxonomy mapping verification "
             "completed with missing accessions.",
             report_lines,
         )
 
         terminal_status = (
-            "WARNING: FASTA-taxonomy mapping verification "
+            "WARNING: BLAST database-taxonomy mapping verification "
             "completed with missing accessions."
         )
 
     else:
         log(
-            "\nPASS: all title-derived accessions are found "
+            "\nPASS: all BLAST database accessions are found "
             "in taxonomy.db.",
-            report_lines
+            report_lines,
         )
 
         terminal_status = (
-            "PASS: all title-derived accessions are found "
+            "PASS: all BLAST database accessions are found "
             "in taxonomy.db."
         )
 
@@ -431,15 +506,18 @@ def verify_mapping(
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Verify mapping coverage between FASTA "
-            "title-derived accessions and taxonomy.db."
+            "Verify mapping coverage between BLAST database accessions "
+            "and taxonomy.db."
         )
     )
 
     parser.add_argument(
-        "--fasta",
+        "--blast-db",
         required=True,
-        help="Input FASTA file, for example database/slimNT.fa",
+        help=(
+            "BLAST database prefix, for example "
+            "database/slimNT or database/refseq_database_FinalTest"
+        ),
     )
 
     parser.add_argument(
@@ -486,7 +564,7 @@ def main():
     args = parser.parse_args()
 
     exit_code = verify_mapping(
-        args.fasta,
+        args.blast_db,
         args.taxonomy_db,
         args.report,
         args.missing_output,
