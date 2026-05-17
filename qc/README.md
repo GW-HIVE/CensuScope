@@ -51,34 +51,68 @@ python qc/taxonomydb_verification.py \
 
 ---
 
-### 2. taxonomydb_mapping.py — Database Mapping Verification
+### 2. taxonomydb_mapping.py — BLAST Database Mapping Verification
 
-Verifies NCBI BLAST database-to-taxonomy mapping coverage by comparing FASTA-derived accessions against the `accession_taxid` table in `taxonomy.db`.
+Verifies NCBI BLAST database-to-taxonomy mapping coverage by comparing indexed BLAST database accessions against the `accession_taxid` table in `taxonomy.db`.
 
 Recommended after confirming that `taxonomy.db` passes database structure verification.
 
 **What it checks:**
-- FASTA database file exists and is readable
-- Accessions can be extracted from FASTA headers
-- Accession versions are normalized before lookup
+
+- BLAST database exists and is readable
+
+- Accessions can be extracted from the indexed BLAST database using `blastdbcmd`
+
+- Accessions are normalized before lookup
+
 - Extracted accessions are checked against `accession_taxid`
+
 - BLAST internal identifiers such as `BL_ORD_ID` and `gnl|` are excluded
-- Missing accessions are reported with their original FASTA headers
+
+- Missing accessions are reported with their original BLAST database headers
+
+- Detects databases built without `-parse_seqids`
+
+**Requirements:**
+
+- NCBI BLAST+ must be installed and available in `PATH`
+
+- The BLAST database should be built using `-parse_seqids`
+
+Example:
+
+```bash
+makeblastdb -in database/slimNT.fa -dbtype nucl -parse_seqids -out database/slimNT
+```
 
 **Output:**
-- Mapping summary report written to: `qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt`
-- Missing accession report written to: `qc/qc_reports/missing_accessions_TIMESTAMP.txt`
 
-**Example terminal output:**
+- Mapping summary report written to:
+
+  `qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt`
+
+- Missing accession report written to:
+
+  `qc/qc_reports/missing_accessions_TIMESTAMP.txt`
+
+**Example PASS terminal output:**
 
 ```text
-WARNING: FASTA-taxonomy mapping verification completed with missing accessions.
+PASS: all BLAST database accessions are found in taxonomy.db.
 
-FASTA-taxonomy mapping verification completed.
+BLAST database-taxonomy mapping verification completed.
 See report: qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
+```
 
+**Example terminal output(missing accessions detected):**
+```text
+
+WARNING: BLAST database-taxonomy mapping verification completed with missing accessions.
+BLAST database-taxonomy mapping verification completed.
+See report: qc/qc_reports/taxonomy_mapping_report_TIMESTAMP.txt
 Missing accessions written to:
 qc/qc_reports/missing_accessions_TIMESTAMP.txt
+
 ```
 
 **Command:**
@@ -86,15 +120,23 @@ qc/qc_reports/missing_accessions_TIMESTAMP.txt
 Run the following command from the `CensuScope` root directory:
 
 ```bash
+
 python qc/taxonomydb_mapping.py \
-  --fasta path/to/database.fasta \
+
+  --blast-db path/to/blast_database_prefix \
+
   --taxonomy-db path/to/taxonomy.db
+
 ```
 
 For example:
 
 ```bash
+
 python qc/taxonomydb_mapping.py \
-  --fasta database/slimNT.fa \
+
+  --blast-db database/slimNT \
+
   --taxonomy-db database/taxonomy.db
+
 ```
