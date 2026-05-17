@@ -117,11 +117,11 @@ cd database
 
 Run `makeblastdb` to create the BLAST database:
 ```
-makeblastdb -in BLAST_db_file.fa -dbtype nucl -out my_blast_db
+makeblastdb -in BLAST_db_file.fa -dbtype nucl -parse_seqids -out my_blast_db
 ```
 Specific Example:
 ```
-makeblastdb -in slimNT.fa -dbtype nucl -out slimNT/
+makeblastdb -in slimNT.fa -dbtype nucl -parse_seqids -out database/slimNT
 ```
 
 This will generate files such as, which appear in a subdirectory your "-out" flag points to:
