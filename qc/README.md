@@ -122,21 +122,17 @@ Run the following command from the `CensuScope` root directory:
 ```bash
 
 python qc/taxonomydb_mapping.py \
-
   --blast-db path/to/blast_database_prefix \
-
   --taxonomy-db path/to/taxonomy.db
 
 ```
 
-For example:
+Specific example:
 
 ```bash
 
 python qc/taxonomydb_mapping.py \
-
   --blast-db database/slimNT \
-
   --taxonomy-db database/taxonomy.db
 
 ```
