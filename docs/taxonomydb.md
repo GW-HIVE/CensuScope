@@ -117,7 +117,11 @@ Navigate to the CensuScope directory
 ```
 cd CensuScope
 ```
-
+Build the required project directories:
+```
+mkdir -p {inputs,temp_dirs,database}
+chmod 777 temp_dirs
+```
 To download the required NCBI data files, run:
 ```
 ./lib/download_data.sh
