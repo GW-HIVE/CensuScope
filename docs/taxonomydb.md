@@ -117,7 +117,6 @@ Navigate to the CensuScope directory
 ```
 cd CensuScope
 ```
-
 To download the required NCBI data files, run:
 ```
 ./lib/download_data.sh
