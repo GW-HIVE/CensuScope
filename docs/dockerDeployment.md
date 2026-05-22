@@ -52,7 +52,7 @@ chmod 777 temp_dirs
 ```
 1. Move your query file (sample file) into the `inputs` directory and name appropriately (the command calls `QUERY.FILE`).
 2. Move your **database** file (e.g., slimNT.fa) into the `database` directory.
-3. Make sure the `taxonomy.db` file is the `database` directory.
+3. Move your the `taxonomy.db` file is the `database` directory.
 
 ### MakeBlastDB Command
 If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md).
