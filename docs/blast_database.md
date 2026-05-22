@@ -103,8 +103,7 @@ makeblastdb -version
 
 In order for CensuScope to use the BLAST reference, the FASTA file must be converted into an NCBI-recognized BLAST database using `makeblastdb`.
 
-If you have already cloned this CensuScope repository, first create the required directories, under the CensuScope directory:
-
+If you have already cloned this CensuScope repository and have not already done so, create the required project directories under the CensuScope directory:
 ```
 mkdir -p {inputs,temp_dirs,database}
 chmod 777 temp_dirs
