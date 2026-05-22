@@ -5,7 +5,12 @@ set -e
 # This script only needs to be ran once and not run every time the docker needs to be built.
 # Note: This download will take anywhere between 15 - 60 mins.
 
-pushd .. 2>&1 > /dev/null
+# pushd .. 2>&1 > /dev/null
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_DIR"
+
+mkdir -p CensuScopeDB
 
 curl -o CensuScopeDB/nucl_gb.accession2taxid.gz \
     ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz
@@ -16,4 +21,4 @@ curl -o CensuScopeDB/nucl_wgs.accession2taxid.gz \
 curl -o CensuScopeDB/new_taxdump.tar.gz \
     ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz 
 
-popd 2>&1 > /dev/null
+# popd 2>&1 > /dev/null

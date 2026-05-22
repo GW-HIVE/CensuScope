@@ -2,7 +2,10 @@
 
 set -e
 
-pushd .. 2>&1 > /dev/null
+#pushd .. 2>&1 > /dev/null
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_DIR"
 # nodes, names, and host are all inside new_taxdump.tar.gz. If it is not uncompressed then this code will fail.
 # Note the filepath of nodes, names, and host. 
 if [ ! -f CensuScopeDB/nodes.dmp ] || [ ! -f CensuScopeDB/names.dmp ] || [ ! -f CensuScopeDB/host.dmp ]; then
@@ -23,4 +26,4 @@ mv temp.db taxonomy.db
 
 echo "Finished building database: $(date)"
 
-popd 2>&1 > /dev/null
+# popd 2>&1 > /dev/null
