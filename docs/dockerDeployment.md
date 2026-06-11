@@ -47,12 +47,14 @@ git checkout BRANCH_NAME
 ### Build project folders
 If you have already cloned this CensuScope repository and have not already done so, create the required project directories under the CensuScope directory:
 ```
-mkdir -p {inputs,temp_dirs,database}
+mkdir -p {temp_dirs,database}
 chmod 777 temp_dirs
 ```
-1. Move your query file (sample file) into the `inputs` directory and name appropriately (the command calls `QUERY.FILE`).
+> **Note:** The `inputs/` directory is already present in the repository and contains a sample FASTQ file (`sample_input.fastq`). You do not need to create it. You can use the sample file for an initial test run, or add your own query file to this directory.
+
+1. Place your query file (FASTQ or FASTA) into the `inputs/` directory. The sample file `sample_input.fastq` is already there if you want to do a test run first.
 2. Move your **database** file (e.g., slimNT.fa) into the `database` directory.
-3. Move your the `taxonomy.db` file is the `database` directory.
+3. Move the `taxonomy.db` file is the `database` directory.
 
 ### MakeBlastDB Command
 If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md).
@@ -138,7 +140,7 @@ docker run -v /PATH/TO/DATABASE_FOLDER:/app/blastdb \
 
 More Specific Example:
 ```shell
-docker run -v /home/desktop/CenuScope/database:/app/blastdb \
+docker run -v /home/desktop/CensuScope/database:/app/blastdb \
   -v /home/desktop/CensuScope/inputs:/app/inputs \
   -v /home/desktop/CensuScope/temp_dirs:/app/temp_dirs  \
   censuscope:v1.1 \
@@ -146,8 +148,8 @@ docker run -v /home/desktop/CenuScope/database:/app/blastdb \
   --iterations 5 \
   --sample-size 10 \
   --tax-depth species \
-  --query_path /app/inputs/c.sebaeus_R1.fasta \
-  --database /app/blastdb/slimNT/slimNT.fa
+  --query_path /app/inputs/sample_input.fastq \
+  --database /app/blastdb/slimNT/slimNT
 ```
 
 
@@ -192,46 +194,47 @@ The main results of the CensuScope computation can be found in this directory. T
 - `censuscope.log` – execution log
 - `accession_table.tsv` - accessions and hit count results
 
-A sample of the `accession_table.tsv` is:
+The following samples show the expected output format when running CensuScope with `sample_input.fastq`. Exact values will vary depending on your BLAST database and run parameters.
+
+A sample of the `accession_table.tsv` when running with `sample_input.fastq` is:
 ```
 Accession	Total Hits	Iterations Present	Average Hits
-DS484556	1	1	0.004
-CP007120	3	1	0.012
-CP007103	2	2	0.008
-DS483562	1	1	0.004
-DS483905	1	1	0.004
-DS484341	2	1	0.008
-DS484668	2	2	0.008
-DS483753	1	1	0.004
-DS484538	1	1	0.004
+CM001951	6	1	0.02
+CM001943	4	1	0.0133
+LC492974	7	1	0.0233
+CM014356	1	1	0.0033
+CM001948	5	1	0.0167
+CM014351	1	1	0.0033
+CM001952	5	1	0.0167
 ```
 
-A sample of the `taxonomy_table.tsv` is:
+A sample of the `taxonomy_table.tsv` when running with `sample_input.fastq` is:
 ```
 Taxid	Name	Percentage	Total Hits	Iterations Present	Full Lineage
-1890364	Planoprotostelium fungivorum	0.0	0	0	Eukaryota; Amoebozoa; Evosea; Variosea; Cavosteliida; Cavosteliaceae; Planoprotostelium; Planoprotostelium fungivorum
-1928728	Paulinella micropora	0.0	0	0	Eukaryota; Sar; Rhizaria; Cercozoa; Imbricatea; Silicofilosea; Euglyphida; Paulinellidae; Paulinella; Paulinella micropora
-7227	Drosophila melanogaster	0.984	246	3	Ephydroidea; Drosophilidae; Drosophilinae; Drosophilini; Drosophila; Sophophora; melanogaster group; melanogaster subgroup; Drosophila melanogaster
-2607653	Chitinophaga agrisoli	0.0	0	0	Bacteria; Pseudomonadati; FCB group; Bacteroidota/Chlorobiota group; Bacteroidota; Chitinophagia; Chitinophagales; Chitinophagaceae; Chitinophaga; Chitinophaga agrisoli
-1389932	Achromobacter pulmonis	0.0	0	0	Bacteria; Pseudomonadati; Pseudomonadota; Betaproteobacteria; Burkholderiales; Alcaligenaceae; Achromobacter; Achromobacter pulmonis
-1578198	Neobacillus notoginsengisoli	0.0	0	0	Bacteria; Bacillati; Bacillota; Bacilli; Bacillales; Bacillaceae; Neobacillus; Neobacillus notoginsengisoli
-1736310	Rhodococcus sp. Leaf258	0.0	0	0	Rhodococcus sp. Leaf258
-138073	Candidatus Regiella insecticola	0.0	0	0	ant, tsetse, mealybug, aphid, etc. endosymbionts; aphid secondary symbionts; Candidatus Regiella; Candidatus Regiella insecticola
-2026724	Chloroflexota bacterium	0.0	0	0	Chloroflexota bacterium
+60711	Chlorocebus sabaeus	0.3333	100	1	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Euarchontoglires; Primates; Haplorrhini; Simiiformes; Cercopithecidae; Chlorocebus; Chlorocebus sabaeus
+9544	Macaca mulatta	0.07	21	1	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Euarchontoglires; Primates; Haplorrhini; Simiiformes; Cercopithecidae; Macaca; Macaca mulatta
+9598	Pan troglodytes	0.0033	1	1	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Euarchontoglires; Primates; Haplorrhini; Simiiformes; Hominidae; Pan; Pan troglodytes
+10116	Rattus norvegicus	0.0	0	0	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Euarchontoglires; Rodentia; Rattus; Rattus norvegicus
+10090	Mus musculus	0.0	0	0	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Euarchontoglires; Rodentia; Mus; Mus musculus
+9612	Canis lupus	0.0	0	0	Eukaryota; Opisthokonta; Metazoa; Eumetazoa; Bilateria; Deuterostomia; Chordata; Craniata; Vertebrata; Gnathostomata; Teleostomi; Euteleostomi; Sarcopterygii; Dipnotetrapodomorpha; Tetrapoda; Amniota; Mammalia; Theria; Eutheria; Laurasiatheria; Carnivora; Canidae; Canis; Canis lupus
 ```
 
-A sample of the `tax_tree.json` is:
+A sample of the `tax_tree.json` when running with `sample_input.fastq` is:
 ```
 {
     "0": {
-        "taxid": 0,
+	"taxid": 0,
         "name": "unmatched",
         "rank": null,
         "children": null,
-        "accessions": []
+        "accessions": [
+            "LC492974",
+            "BQXJ01000001",
+            "BSCU01000028"
+        ]
     },
     "2759": {
-        "taxid": 2759,
+	"taxid": 2759,
         "parent": 131567,
         "name": "Eukaryota",
         "rank": "domain",
@@ -242,6 +245,18 @@ A sample of the `tax_tree.json` is:
                 "name": "Opisthokonta",
                 "rank": "clade",
                 "children": {
+                    "33208": {
+                        "taxid": 33208,
+                        "parent": 33154,
+                        "name": "Metazoa",
+                        "rank": "kingdom",
+                        "children": {
+                            "6072": {
+                                "taxid": 6072,
+                                "parent": 33208,
+                                "name": "Eumetazoa",
+                                "rank": "clade",
+
                 ...
 ```
 
