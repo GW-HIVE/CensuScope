@@ -54,7 +54,7 @@ chmod 777 temp_dirs
 
 1. Place your query file (FASTQ or FASTA) into the `inputs/` directory. The sample file `sample_input.fastq` is already there if you want to do a test run first.
 2. Move your **database** file (e.g., slimNT.fa) into the `database` directory.
-3. Move the `taxonomy.db` file is the `database` directory.
+3. Move the `taxonomy.db` file to the `database` directory.
 
 ### MakeBlastDB Command
 If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md).
