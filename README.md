@@ -104,6 +104,8 @@ CensuScope requires two reference resources to be prepared prior to execution:
 
 These files are treated as **read-only inputs** during runtime and must be available before running the workflow. Once both databases are prepared, CensuScope can be executed using the Docker deployment guide.
 
+A sample FASTQ file (`sample_input.fastq`) is included in the `inputs/` directory. You can use it for an initial test run to verify your deployment before using your own data.
+
 For step-by-step setup instructions in order of workflow, follow the documentation in this order:
 
 1. **Build the taxonomy database**  
