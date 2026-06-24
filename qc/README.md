@@ -136,3 +136,107 @@ python qc/taxonomydb_mapping.py \
   --taxonomy-db database/taxonomy.db
 
 ```
+---
+## 3. parse_taxids.py — Accession-to-TaxID Recovery
+
+Recovers accession-to-taxid mappings that are missing from `taxonomy.db` by querying NCBI Entrez E-utilities.
+
+Recommended when `taxonomydb_mapping.py` reports accessions that are missing from `taxonomy.db`.
+
+**Features:**
+
+- Batch accession processing
+- NCBI API key support
+- Checkpoint support for long-running jobs
+- Generation of unresolved accession reports
+
+**NCBI API Key (Recommended):**
+
+Using an API key increases the allowable NCBI request rate.
+
+1. Sign in to My NCBI.
+2. Open **Account Settings**.
+3. Navigate to **API Key Management**.
+4. Create or view your API key.
+
+Export the key before running the script:
+
+```bash
+export NCBI_API_KEY="YOUR_API_KEY"
+```
+
+Verify:
+
+```bash
+echo $NCBI_API_KEY
+```
+More information about API key can be found here: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/api/api-keys/
+
+**Run:**
+
+```bash
+python parse_taxids.py \qc_reports/missing_accessions_TIMESTAMP.txt \
+```
+
+Optional Parameters:
+
+- `--batch-size`: Number of accessions queried per NCBI request (maximum: 500; default: 200).
+
+- `--timeout`: Maximum time to wait for an NCBI response before the request is considered failed (default: 60).
+
+- `--resume`: Resume a previously interrupted run using the checkpoint file.
+
+**Running in the Background:**
+
+```bash
+nohup python parse_taxids.py \
+    qc_reports/missing_accessions_TIMESTAMP.txt \
+    --batch-size 200 \
+    --timeout 120 \
+    > qc_reports/run_log.txt 2>&1 &
+```
+
+**This generates:**
+
+```text
+
+qc_reports/recovered_accession_taxid_TIMESTAMP.tsv
+
+qc_reports/unresolved_accessions_TIMESTAMP.txt
+
+qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
+
+```
+
+**To add recovered mappings to taxonomy.db:**
+
+Open the database:
+
+```bash
+sqlite3 database/taxonomy.db
+```
+
+**Inside SQLite:**
+
+```sql
+CREATE TEMP TABLE recovered_accession_taxid (
+    accession TEXT,
+    taxid INTEGER
+);
+
+.mode tabs
+.import qc_reports/recovered_accession_taxid_TIMESTAMP.tsv recovered_accession_taxid
+
+INSERT OR IGNORE INTO accession_taxid(accession, taxid)
+SELECT accession, taxid
+FROM recovered_accession_taxid;
+
+SELECT COUNT(*) FROM accession_taxid;
+
+.quit
+```
+
+The `INSERT OR IGNORE` statement adds newly recovered mappings while preserving existing records.
+
+After importing the recovered mappings, rerun `taxonomydb_mapping.py` to verify that the missing accession count has been reduced or eliminated.
+```
