@@ -174,10 +174,6 @@ More information about API keys can be found [here](https://www.ncbi.nlm.nih.gov
 
 **Run:**
 
-```bash
-python parse_taxids.py \qc_reports/missing_accessions_TIMESTAMP.txt \
-```
-
 Optional Parameters:
 
 - `--batch-size`: Number of accessions queried per NCBI request (maximum: 500; default: 200).
@@ -186,29 +182,46 @@ Optional Parameters:
 
 - `--resume`: Resume a previously interrupted run using the checkpoint file.
 
-**Running in the Background:**
+```bash
+python parse_taxids.py \qc_reports/missing_accessions_TIMESTAMP.txt
+```
+
+**Checkpoint and Resume**
+
+For large accession sets, the script automatically generates a checkpoint file:
+
+```text
+qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
+```
+
+The checkpoint file records run progress, including the number of processed, recovered, and unresolved accessions.
+
+Recovered mappings are written incrementally to:
+
+```text
+qc_reports/recovered_accession_taxid_TIMESTAMP.tsv
+```
+
+If a run is interrupted, resume by using `--resume` with the same output file from the interrupted run:
 
 ```bash
-nohup python parse_taxids.py \
+python parse_taxids.py \
     qc_reports/missing_accessions_TIMESTAMP.txt \
-    --batch-size 200 \
-    --timeout 120 \
-    > qc_reports/run_log.txt 2>&1 &
+    --resume \
+    --output qc_reports/recovered_accession_taxid_TIMESTAMP.tsv
 ```
+
+This allows the script to skip accessions that were already recovered and continue processing the remaining accessions.
 
 **This generates:**
 
 ```text
-
 qc_reports/recovered_accession_taxid_TIMESTAMP.tsv
-
 qc_reports/unresolved_accessions_TIMESTAMP.txt
-
 qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
-
 ```
 
-**To add recovered mappings to taxonomy.db:**
+**To import recovered mappings into taxonomy.db:**
 
 Open the database:
 
