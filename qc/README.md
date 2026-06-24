@@ -117,7 +117,7 @@ qc/qc_reports/missing_accessions_TIMESTAMP.txt
 
 **Command:**
 
-Run the following command from the `CensuScope` root directory:
+Run the following commands from the `CensuScope` root directory:
 
 ```bash
 
@@ -177,10 +177,8 @@ More information about API keys can be found [here](https://www.ncbi.nlm.nih.gov
 Optional Parameters:
 
 - `--batch-size`: Number of accessions queried per NCBI request (maximum: 500; default: 200).
-
 - `--timeout`: Maximum time to wait for an NCBI response before the request is considered failed (default: 60).
-
-- `--resume`: Resume a previously interrupted run using the checkpoint file.
+- `--resume`: Resume a previously interrupted run using the existing recovered accession TSV file specified by --output.
 
 ```bash
 python parse_taxids.py \qc_reports/missing_accessions_TIMESTAMP.txt
@@ -223,6 +221,8 @@ qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
 
 **To import recovered mappings into taxonomy.db:**
 
+Run the following commands from the `CensuScope` root directory
+
 Open the database:
 
 ```bash
@@ -238,7 +238,7 @@ CREATE TEMP TABLE recovered_accession_taxid (
 );
 
 .mode tabs
-.import qc_reports/recovered_accession_taxid_TIMESTAMP.tsv recovered_accession_taxid
+.import qc/qc_reports/recovered_accession_taxid_TIMESTAMP.tsv recovered_accession_taxid
 
 INSERT OR IGNORE INTO accession_taxid(accession, taxid)
 SELECT accession, taxid
