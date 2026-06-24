@@ -304,7 +304,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("input")
     parser.add_argument("--output", default=None)
     parser.add_argument("--unresolved-output", default=None)
-    parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--batch-size",
@@ -334,7 +333,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     default_output, default_unresolved, default_checkpoint = get_default_paths()
     output_path = args.output or default_output
     unresolved_path = args.unresolved_output or default_unresolved
-    checkpoint_path = args.checkpoint or default_checkpoint
+    checkpoint_path = default_checkpoint
 
     accessions = read_accessions(args.input)
     if not accessions:
