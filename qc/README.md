@@ -170,7 +170,7 @@ Verify:
 ```bash
 echo $NCBI_API_KEY
 ```
-More information about API key can be found here: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/api/api-keys/
+More information about API keys can be found [here](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/api/api-keys/).
 
 **Run:**
 
