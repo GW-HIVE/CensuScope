@@ -16,16 +16,13 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 EUTILS_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 
-# NCBI allows up to 500 IDs per request with an API key
 MAX_BATCH_SIZE = 500
 DEFAULT_BATCH_SIZE = 200
 
-# Retry config
 MAX_RETRIES = 5
 BASE_BACKOFF = 2.0      # seconds; doubles each retry
 MAX_BACKOFF = 60.0
 
-# HTTP status codes that are transient and worth retrying
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 
@@ -219,8 +216,6 @@ class NCBIClient:
         if not missing:
             return resolved, []
 
-        # Some accessions returned no GBSeq element — could be withdrawn/invalid.
-        # Try them individually to avoid marking good accessions as failed.
         if len(accessions) > 1 and missing:
             sys.stderr.write(
                 f"  {len(missing)} accessions missing from response,"
