@@ -136,6 +136,9 @@ The QC framework includes:
   - validates taxonomy database structure and integrity
 - `taxonomydb_mapping.py`
   - validates BLAST database-to-taxonomy mapping coverage
+- `parse_taxid.py`
+  - recovers missing accession-to-taxid mappings from NCBI
+  - generates mapping files that can be imported into `taxonomy.db`
 
 QC verification is OPTIONAL and is not required for normal CensuScope execution.
 
