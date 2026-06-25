@@ -216,12 +216,8 @@ qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
 
 Run the following commands from the `CensuScope` root directory
 
-Run the following command from the **CensuScope** root directory:
-
-```bash
-
+```
 sqlite3 database/taxonomy.db
-
 ```
 
 Create a temporary table:
