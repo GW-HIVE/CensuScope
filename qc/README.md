@@ -143,13 +143,6 @@ Recovers accession-to-taxid mappings that are missing from `taxonomy.db` by quer
 
 Recommended when `taxonomydb_mapping.py` reports accessions that are missing from `taxonomy.db`.
 
-**Features:**
-
-- Batch accession processing
-- NCBI API key support
-- Checkpoint support for long-running jobs
-- Generation of unresolved accession reports
-
 **NCBI API Key (Recommended):**
 
 Using an API key increases the allowable NCBI request rate.
@@ -223,33 +216,42 @@ qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
 
 Run the following commands from the `CensuScope` root directory
 
-Open the database:
+Run the following command from the **CensuScope** root directory:
 
 ```bash
+
 sqlite3 database/taxonomy.db
+
 ```
 
-**Inside SQLite:**
+Create a temporary table:
 
-```sql
-CREATE TEMP TABLE recovered_accession_taxid (
-    accession TEXT,
-    taxid INTEGER
-);
+```
+CREATE TEMP TABLE recovered_accession_taxid (accession TEXT, taxid INTEGER);
+```
 
+Set the import mode:
+
+```
 .mode tabs
-.import qc/qc_reports/recovered_accession_taxid_TIMESTAMP.tsv recovered_accession_taxid
+```
 
+Import the recovered mappings:
+
+```
+.import qc/qc_reports/recovered_accession_taxid_TIMESTAMP.tsv recovered_accession_taxid
+```
+Insert the recovered mappings into `accession_taxid`:
+
+```
 INSERT OR IGNORE INTO accession_taxid(accession, taxid)
 SELECT accession, taxid
 FROM recovered_accession_taxid;
+```
+Exit SQLite:
 
-SELECT COUNT(*) FROM accession_taxid;
-
+```
 .quit
 ```
 
-The `INSERT OR IGNORE` statement adds newly recovered mappings while preserving existing records.
-
 After importing the recovered mappings, rerun `taxonomydb_mapping.py` to verify that the missing accession count has been reduced or eliminated.
-```
