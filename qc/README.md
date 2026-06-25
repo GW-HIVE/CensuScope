@@ -212,7 +212,7 @@ The script generates the following files in `qc_reports/`:
 
 - **recovered_accession_taxid_TIMESTAMP.tsv:** Recovered accession-to-taxid mappings successfully retrieved from NCBI.
 - **unresolved_accessions_TIMESTAMP.txt:** Accessions that could not be resolved after all lookup and retry attempts.
-- **parse_taxids_checkpoint_TIMESTAMP.txt:** Checkpoint file recording processing progress, A progress summary showing the number of processed, recovered, and unresolved accessions during the run.
+- **parse_taxids_checkpoint_TIMESTAMP.txt:** A progress summary showing the number of processed, recovered, and unresolved accessions during the run.
 
 **To import recovered mappings into taxonomy.db:**
 
