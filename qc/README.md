@@ -173,6 +173,8 @@ Optional Parameters:
 - `--timeout`: Maximum time to wait for an NCBI response before the request is considered failed (default: 60).
 - `--resume`: Resume a previously interrupted run using the existing recovered accession TSV file specified by --output.
 
+Command:
+
 ```bash
 python parse_taxids.py \qc_reports/missing_accessions_TIMESTAMP.txt
 ```
@@ -204,13 +206,13 @@ python parse_taxids.py \
 
 This allows the script to skip accessions that were already recovered and continue processing the remaining accessions.
 
-**This generates:**
+**Outputs:**
 
-```text
-qc_reports/recovered_accession_taxid_TIMESTAMP.tsv
-qc_reports/unresolved_accessions_TIMESTAMP.txt
-qc_reports/parse_taxids_checkpoint_TIMESTAMP.txt
-```
+The script generates the following files in `qc_reports/`:
+
+- **recovered_accession_taxid_TIMESTAMP.tsv:** Recovered accession-to-taxid mappings successfully retrieved from NCBI.
+- **unresolved_accessions_TIMESTAMP.txt:** Accessions that could not be resolved after all lookup and retry attempts.
+- **parse_taxids_checkpoint_TIMESTAMP.txt:** Checkpoint file recording processing progress, A progress summary showing the number of processed, recovered, and unresolved accessions during the run.
 
 **To import recovered mappings into taxonomy.db:**
 
