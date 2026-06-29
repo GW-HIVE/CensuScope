@@ -584,19 +584,28 @@ def handle_orphans(parent_taxid):
 def add_to_tree(tax_tree, lineage, accession):
     tax_depth = global_state.tax_depth
 
+    fallback_node = None
+
     for taxid, name, rank, parent_taxid in lineage:
         if taxid in {1, 131567}:
             continue
 
-        if rank == '-':
-            continue
-
+        # keep no-rank nodes in the tree instead of skipping them
         node = find_or_create_node(tax_tree, taxid, name, rank, parent_taxid)
-        handle_orphans(taxid)  # Check for and reattach orphans
+        handle_orphans(taxid)
 
+        # first real hit taxid becomes fallback
+        if fallback_node is None and rank == '-':
+            fallback_node = node
+
+        # normal case: exact requested rank found
         if rank == tax_depth:
             node.setdefault("accessions", []).append(accession)
-            break
+            return
+
+    # fallback case: no requested rank found, report original no-rank hit
+    if fallback_node is not None:
+        fallback_node.setdefault("accessions", []).append(accession)
 
 
 def traverse_tax_tree(node, overall_hits, final_table, total_hits, lineage=""):
