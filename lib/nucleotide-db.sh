@@ -67,8 +67,7 @@ echo ""
 echo "-------- sqlite3 step at $(date) --------"
 echo "Using dbfile: $dbfile"
 
-sqlite3 <<EOF
-.open $dbfile
+sqlite3 "$dbfile" <<EOF
 
 CREATE TABLE IF NOT EXISTS accession_taxid (
     accession VARCHAR UNIQUE PRIMARY KEY,
