@@ -45,17 +45,14 @@ RUN mkdir -p blastdb
 
 COPY requirements.txt requirements.txt
 COPY lib ./lib
-
-## Build the SQLite Database
-# RUN lib/nucleotide-db.sh CensuScopeDB/ taxonomy.db && \
-#     lib/add-nodes.sh CensuScopeDB/nodes.dmp taxonomy.db && \
-#     lib/add-names.sh CensuScopeDB/names.dmp taxonomy.db && \
-#     cp taxonomy.db temp.db && \
-#     lib/add-hosts.sh CensuScopeDB/host.dmp temp.db && \
-#     mv temp.db taxonomy.db
+COPY entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 ## Python Setup
 RUN pip install --no-cache-dir -r requirements.txt
 
-## Default Command: pass arguments via docker run or docker-compose.yml
-CMD ["python", "lib/censuscope.py", "--iterations", "$ITERATIONS", "--sample_size", "$SAMPLE_SIZE", "--tax-depth", "$TAXDEPTH", "--query_path", "$QUERYPATH", "--database", "$DATABASE"]
+## taxonomy.db and BLAST database files are provided at runtime via volume mount.
+## Use the entrypoint's build-taxonomy and build-blast commands to create them
+## inside the container if local builds are not feasible. See entrypoint.sh.
+
+ENTRYPOINT ["/app/entrypoint.sh"]
