@@ -1,18 +1,27 @@
 #!/bin/bash
 
 # Convenience wrapper for running CensuScope via Docker.
-# Update the paths and arguments below before running:
 #
-#   blastdb/   — directory containing your BLAST database files AND taxonomy.db
+# ── First-time setup ──────────────────────────────────────────────────────
+#
+# 1. Build taxonomy.db (one-time, ~30–60 min depending on connection).
+#    Downloads NCBI data and builds the database inside the container,
+#    writing taxonomy.db to ./blastdb/ on the host:
+#
+#   mkdir -p blastdb
+#   docker run -v "$(pwd)/blastdb:/app/blastdb" censuscope build-taxonomy
+#
+# 2. Build a BLAST database from your reference FASTA (one-time):
+#
+#   docker run -v "$(pwd)/blastdb:/app/blastdb" censuscope \
+#     build-blast /app/blastdb/reference.fasta /app/blastdb/reference
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+# Update paths and arguments below, then run this script.
+#
+#   blastdb/   — directory containing BLAST database files and taxonomy.db
 #   inputs/    — directory containing your input FASTQ or FASTA file
-#   temp_dirs/ — directory where CensuScope writes its output (created if absent)
-#
-# Arguments to adjust:
-#   --iterations    number of sampling iterations
-#   --sample-size   reads per iteration
-#   --tax-depth     kingdom | phylum | class | order | family | genus | species
-#   --query_path    path to your input file inside the container (/app/inputs/...)
-#   --database      path to your BLAST database prefix inside the container (/app/blastdb/...)
+#   temp_dirs/ — directory where CensuScope writes its output
 
 mkdir -p temp_dirs
 
@@ -21,7 +30,6 @@ docker run \
   -v "$(pwd)/inputs:/app/inputs" \
   -v "$(pwd)/temp_dirs:/app/temp_dirs" \
   censuscope \
-  python lib/censuscope.py \
   --iterations 5 \
   --sample-size 10 \
   --tax-depth species \
