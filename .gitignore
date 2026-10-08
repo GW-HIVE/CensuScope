@@ -1,6 +1,7 @@
 *.DS_Store
 CensuScopeDB/
-raw_data/*
+inputs/
+sessions/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -27,6 +27,7 @@ cut -f1-4 -d\| < "$namesFile" \
   > "$tmp"
 
 sqlite3 "$dbfile" <<EOF
+sqlite3 "$dbfile" <<EOF
 PRAGMA journal_mode = OFF;
 PRAGMA synchronous = OFF;
 PRAGMA temp_store = MEMORY;
@@ -43,7 +44,7 @@ CREATE TABLE names_tmp (
 );
 
 .separator '|'
-.import $tmp names_tmp
+.import "$tmp" names_tmp
 
 -- Enforce exactly one scientific name per taxid
 CREATE TABLE names (

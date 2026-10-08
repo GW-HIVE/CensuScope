@@ -312,7 +312,7 @@ def validate_database(database: str):
     """
     valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
 
-    db_dir = os.path.dirname(database)
+    db_dir = os.path.dirname(database) or "."
     db_prefix = os.path.basename(database)
 
     if not os.path.isdir(db_dir):
@@ -717,7 +717,7 @@ def fastq_to_fasta(query_path):
     elif head_char == "@":
         try:
             subprocess.run(f"seqtk seq -a {query_path} > {output_fasta}", shell=True, check=True)
-            logger.warning(f"Conversion from FASTA to FASTQ complete: {output_fasta}")
+            logger.warning(f"Conversion from FASTQ to FASTA complete: {output_fasta}")
             return output_fasta
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Error during conversion: {e}")
@@ -744,7 +744,7 @@ def main():
         sys.exit(1)
 
     try:
-	    validate_database(global_state.database)
+        validate_database(global_state.database)
     except ValueError as e:
         logger.critical(f"Database validation failed: {e}")
         sys.exit(1)
