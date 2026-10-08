@@ -1,6 +1,8 @@
 *.DS_Store
 CensuScopeDB/
-remote_archive/*
+inputs/
+sessions/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
