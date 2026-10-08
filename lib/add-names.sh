@@ -26,7 +26,7 @@ cut -f1-4 -d\| < "$namesFile" |
     tr -d '\011' |
     awk -F\| '$4 == "scientific name" { printf "%s|%s\n", $1, $2 }' > "$tmp"
 
-sqlite3 "$dbfile" <<'EOF'
+sqlite3 "$dbfile" <<EOF
 PRAGMA journal_mode = OFF;
 PRAGMA synchronous = OFF;
 PRAGMA temp_store = MEMORY;
