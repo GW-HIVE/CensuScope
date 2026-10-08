@@ -124,6 +124,195 @@ def usr_args():
 
     return options
 
+def validate_query_file(query_path: str):
+    """
+    Check input file existence, file extension, format, and content(header, sequence).
+    """
+
+    valid_nucleotide_regex = re.compile(r'^[ACGTUNRYKMSWBDHVacgtunrykmswbdhv]+$') #Including IUPAC ambiguity codes
+
+    # File existence
+    if not os.path.isfile(query_path):
+        raise FileNotFoundError(f"Input file not found: {query_path}")
+
+    # File extension
+    valid_extensions = {".fastq", ".fq", ".fasta", ".fa"}
+    _, ext = os.path.splitext(query_path)
+    if ext.lower() not in valid_extensions:
+        raise ValueError(
+            f"Unsupported input file format '{ext}'. "
+            f"CensusScope only accepts FASTA or FASTQ files. "
+            f"({', '.join(sorted(valid_extensions))})."
+        )
+
+    # Read first non-empty line to detect format
+    try:
+        with open(query_path, "r") as f:
+            first_line = ""
+            for line in f:
+                first_line = line.strip()
+                if first_line:
+                    break
+    except OSError as e:
+        raise ValueError(f"Could not read input file '{query_path}': {e}")
+
+    if not first_line:
+        raise ValueError(f"Input file '{query_path}' is empty.")
+
+    if first_line.startswith(">"):
+        detected_format = "FASTA"
+
+        with open(query_path, "r") as f:
+            expecting_sequence = False
+            record_count = 0
+            current_header = None
+
+            for line_num, line in enumerate(f, start=1):
+                stripped = line.strip()
+
+                if not stripped:
+                    continue
+
+                if stripped.startswith(">"):
+                    if expecting_sequence:
+                        raise ValueError(
+                            f"Invalid FASTA file '{query_path}': "
+                            f"header '{current_header}' has no sequence. "
+                            f"Please check your input file and make sure every '>' header "
+                            f"is followed by a valid nucleotide sequence."
+                        )
+
+                    record_count += 1
+                    expecting_sequence = True
+                    current_header = stripped
+
+                else:
+                    if not valid_nucleotide_regex.fullmatch(stripped):
+                        raise ValueError(
+                            f"Invalid FASTA file '{query_path}': "
+                            f"invalid sequence at line {line_num}. "
+                            f"Only valid nucleotide characters are allowed."
+                        )
+
+                    expecting_sequence = False
+
+            if record_count == 0:
+                raise ValueError(f"Invalid FASTA file '{query_path}': no FASTA records found.")
+
+            if expecting_sequence:
+                raise ValueError(
+                    f"Invalid FASTA file '{query_path}': "
+                    f"last header has no sequence. "
+                    f"Please check your input file."
+                )
+
+    elif first_line.startswith("@"):
+        detected_format = "FASTQ"
+
+        with open(query_path, "r") as f:
+            record_num = 0
+
+            while True:
+                header = f.readline()
+                if not header:
+                    break
+
+                if not header.strip():
+                    continue
+
+                seq = f.readline()
+                plus = f.readline()
+                qual = f.readline()
+
+                record_num += 1
+
+                if not seq or not plus or not qual:
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': incomplete record at record {record_num}."
+                    )
+
+                header = header.rstrip("\n\r")
+                seq = seq.rstrip("\n\r")
+                plus = plus.rstrip("\n\r")
+                qual = qual.rstrip("\n\r")
+
+                if not header.startswith("@"):
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': "
+                        f"record {record_num} header does not start with '@'."
+                    )
+
+                if not seq:
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': "
+                        f"record {record_num} has empty sequence."
+                    )
+
+                if not valid_nucleotide_regex.fullmatch(seq):
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': "
+                        f"record {record_num} contains invalid nucleotide characters."
+                    )
+
+                if not plus.startswith("+"):
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': "
+                        f"record {record_num} third line does not start with '+'."
+                    )
+
+                if len(seq) != len(qual):
+                    raise ValueError(
+                        f"Invalid FASTQ file '{query_path}': "
+                        f"record {record_num} sequence length ({len(seq)}) does not match "
+                        f"quality length ({len(qual)})."
+                    )
+
+            if record_num == 0:
+                raise ValueError(f"Invalid FASTQ file '{query_path}': no records found.")
+
+    else:
+        raise ValueError(
+            f"Invalid input file '{query_path}': "
+            f"the first non-empty line does not start with '>' (FASTA) or '@' (FASTQ). "
+            f"Please check your input file. Remove any unnecessary text before the first sequence, "
+            f"or ensure each sequence has a proper header ('>' for FASTA or '@' for FASTQ)."
+        )
+
+    logger.info(
+        f"Input file validated: {query_path} "
+        f"(extension: {ext}, detected format: {detected_format})"
+    )
+
+def validate_database(database: str):
+    """
+    Validate that the given path points to a usable BLAST nucleotide database
+    by checking for the required core index files for the provided database prefix(e.g. SlimNT, RefSeq, nt).
+    """
+    valid_db_extensions = {".nsi", ".nsd", ".nin", ".nsq", ".nhr"}
+
+    db_dir = os.path.dirname(database) or "."
+    db_prefix = os.path.basename(database)
+
+    if not os.path.isdir(db_dir):
+        raise ValueError(f"Database directory not found: {db_dir}")
+
+    # find files that match prefix/extension
+    found = [
+        f for f in os.listdir(db_dir)
+        if f.startswith(db_prefix) and any(f.endswith(ext) for ext in valid_db_extensions)
+    ]
+
+    if not found:
+        raise ValueError(
+            f"No valid BLAST database files found for prefix '{db_prefix}' in '{db_dir}'. "
+            f"Expected files like: {db_prefix}.* with extensions "
+            f"{', '.join(sorted(valid_db_extensions))}."
+        )
+
+    logger.info(
+        f"Database validated: {database} "
+        f"(found files: {', '.join(found[:5])}{'...' if len(found) > 5 else ''})"
+    )
 
 def count_sequences(query_path: str) -> int:
     """
@@ -501,7 +690,7 @@ def fastq_to_fasta(query_path):
     elif head_char == "@":
         try:
             subprocess.run(f"seqtk seq -a {query_path} > {output_fasta}", shell=True, check=True)
-            logger.info(f"Conversion complete: {output_fasta}")
+            logger.warning(f"Conversion from FASTQ to FASTA complete: {output_fasta}")
             return output_fasta
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Error during conversion: {e}")
@@ -519,7 +708,19 @@ def main():
     logger.info("FileHandler created successfully.")
     options = usr_args()
     logger.info(f"{options}")
+    logger.warning("")
 
+    try:
+        validate_query_file(global_state.query_path)
+    except (ValueError, FileNotFoundError) as e:
+        logger.critical(f"Input validation failed: {e}")
+        sys.exit(1)
+
+    try:
+        validate_database(global_state.database)
+    except ValueError as e:
+        logger.critical(f"Database validation failed: {e}")
+        sys.exit(1)
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path

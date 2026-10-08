@@ -43,7 +43,7 @@ CREATE TABLE names_tmp (
 );
 
 .separator '|'
-.import '"$tmp"' names_tmp
+.import "$tmp" names_tmp
 
 -- Normalize to exactly one name per taxid
 CREATE TABLE names (
