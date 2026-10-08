@@ -15,7 +15,10 @@ case $# in
         nucl_gb="$1"
         dbfile="$2"
         ;;
-    *) echo "Usage: $(basename $0) accession-file db-file" >&2; exit 1;;
+    *)
+        echo "Usage: $(basename "$0") accession-dir db-file" >&2
+        exit 1
+        ;;
 esac
 
 # Normalize directory path to ensure trailing slash
@@ -72,6 +75,13 @@ CREATE TABLE accession_taxid (
     accession VARCHAR UNIQUE PRIMARY KEY,
     taxid INTEGER NOT NULL
 );
+
+CREATE TEMP TABLE tmp_accession_taxid (
+    accession VARCHAR,
+    taxid INTEGER
+);
+DROP INDEX IF EXISTS accession_taxid_accession_idx;
+DROP TABLE IF EXISTS tmp_accession_taxid;
 
 CREATE TEMP TABLE tmp_accession_taxid (
     accession VARCHAR,

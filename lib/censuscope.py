@@ -15,6 +15,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from threading import Thread, Lock
+import re
 
 write_lock = Lock()
 
@@ -31,8 +32,8 @@ class GlobalState:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.start_time = datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z')
-        # self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
-        self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
+        self.temp_path = f"{self.base_dir}/temp_dirs/{self.start_time}"
+        # self.temp_path = f"{self.base_dir}/temp_dirs"   #For debugging
         self.temp_dirs = {
             "random_samples": f"{self.temp_path}/random_samples",
             "results": f"{self.temp_path}/results",
@@ -51,11 +52,32 @@ global_state = GlobalState()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.propagate = False
+
 log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
 
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# Full format for the log file
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# Cleaner format for terminal output
+stream_formatter = logging.Formatter(
+    '%(asctime)s - %(message)s'
+)
+
 file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(file_formatter)
+
+# Stream handler: only show important things in terminal
 stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.WARNING)
+stream_handler.setFormatter(stream_formatter)
+
+if logger.hasHandlers():
+    logger.handlers.clear()
+
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
@@ -102,13 +124,13 @@ def usr_args():
     parser.add_argument(
         "-q", '--query_path',
         required=True,
-        help="Input file name"
+        help="Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)"
     )
 
     parser.add_argument(
         "-d", '--database',
         required=True,
-        help="BLAST database name"
+        help="BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)"
     )
 
     if len(sys.argv) <= 1:
@@ -318,16 +340,16 @@ def count_sequences(query_path: str) -> int:
     """
     Use grep to count the number of sequences in a file.
     """
-    logger.info(f"Counting sequences in {query_path}")
+    logger.warning(f"    Counting sequences in {query_path}")
     try:
         result = subprocess.run(['grep', '-c', '>', query_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         count = int(result.stdout.strip())
-        logger.info(f"{count} sequences in {query_path}")
+        logger.warning(f"    {count} sequences in {query_path}")
         return count
     except subprocess.CalledProcessError as e:
         logger.error(f"Error counting sequences: {e}")
         raise ValueError(f"Error counting sequences: {e}")
-
+    logger.warning(" ")
 
 def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
     """
@@ -336,13 +358,13 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
 
     random_samples_path = global_state.temp_dirs["random_samples"]
 
-    logger.info(f"Step 1: Determining how many reads we have")
+    logger.warning(f"Step 1: Determining how many reads we have")
     total_reads = count_sequences(query_path)  # Assuming count_sequences uses grep to count headers
-    logger.info(f"{total_reads} FASTA records")
+    logger.warning(f"    {total_reads} FASTA records")
 
     if total_reads > sample_size:
         logger.info("Subset file")
-        logger.info("Step 2: Generate random sample indices for each iteration (these are read indices, not line indices)")
+        logger.warning("Step 2: Generate random sample indices for each iteration (these are read indices, not line indices)")
 
         for it in range(1, iteration_count + 1):
             logger.info(f"{it}- out of {iteration_count}: ")
@@ -366,14 +388,14 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
                 logger.exception(f"Error during awk execution: {e}")
 
     else:
-        logger.info("Whole file requested, no iterations.")
+        logger.warning("Whole file requested, no iterations.")
         subprocess.run(f"cp {query_path} " + global_state.temp_dirs["random_samples"], shell=True)
+    logger.warning("")
 
 
 def blastn(database):
     """Run BLAST
-    
-    Options: 
+    Options:
         -outfmt 6 -num_threads 10 -evalue 1e-6 -max_target_seqs 10 -perc_identity 80 -max_hsps 1
     """
 
@@ -393,9 +415,8 @@ def blastn(database):
 
         logger.info(f"{now}: Start result_{identifier}.txt\n\t{blast_command}")
         subprocess.run(blast_command, shell=True)
-        logger.info(f"Finished result_{identifier}.txt")
+        logger.warning(f"Finished blastn for {random_sample}, output is result_{identifier}.txt")
         logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
-
 
 def refine_blast_files(sample_size: int):
     """
@@ -403,8 +424,8 @@ def refine_blast_files(sample_size: int):
     Use multithreading to process multiple files concurrently.
     Track hit counts across all files and calculate averages.
     """
-
-    logger.info("Refining BLAST results")
+    logger.warning("----------------------")
+    logger.warning("Refining BLAST results")
     logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     blastn_path =  global_state.temp_dirs["blastn"]
     blast_results = next(os.walk(blastn_path), (None, None, []))[2]
@@ -430,8 +451,8 @@ def refine_blast_files(sample_size: int):
                 else:
                     accession_raw = row[1]
 
-				accession = normalize_accession(accession_raw)
-                
+                accession = normalize_accession(accession_raw)
+
                 if accession not in unique_accessions:
                     unique_accessions.append(accession)
 
@@ -443,12 +464,11 @@ def refine_blast_files(sample_size: int):
             tax_data["unaligned"] = sample_size - iteration_hits
 
         for accession, hit_count in tax_data.items():
-            if hit_count == 0:
-                logger.exception(f"Error with hit count for accession {accession}!")
+            if hit_count == 0 and accession != "unaligned":
+                logger.warning(f"Zero hit count for accession '{accession}'")
             overall_hits[accession].append(hit_count)
 
     tax_tree = fetch_taxonomy(unique_accessions)
-    
     write_final_table(overall_hits, tax_tree)
 
 
@@ -464,7 +484,7 @@ def fetch_taxonomy(unique_accessions: dict):
     taxid up to the root.
     """
     
-    db_file = 'taxonomy.db'
+    db_file = '/app/blastdb/taxonomy.db'
     tax_tree = {
         "0": {
             "taxid": 0,
@@ -564,19 +584,28 @@ def handle_orphans(parent_taxid):
 def add_to_tree(tax_tree, lineage, accession):
     tax_depth = global_state.tax_depth
 
+    fallback_node = None
+
     for taxid, name, rank, parent_taxid in lineage:
         if taxid in {1, 131567}:
             continue
 
-        if rank == '-':
-            continue
-
+        # keep no-rank nodes in the tree instead of skipping them
         node = find_or_create_node(tax_tree, taxid, name, rank, parent_taxid)
-        handle_orphans(taxid)  # Check for and reattach orphans
+        handle_orphans(taxid)
 
+        # first real hit taxid becomes fallback
+        if fallback_node is None and rank == '-':
+            fallback_node = node
+
+        # normal case: exact requested rank found
         if rank == tax_depth:
             node.setdefault("accessions", []).append(accession)
-            break
+            return
+
+    # fallback case: no requested rank found, report original no-rank hit
+    if fallback_node is not None:
+        fallback_node.setdefault("accessions", []).append(accession)
 
 
 def traverse_tax_tree(node, overall_hits, final_table, total_hits, lineage=""):
@@ -631,13 +660,13 @@ def write_final_table(overall_hits, tax_tree):
     Calculate the average hit count for each GB accession and write the final output.
     # TODO: iterations will cease if no new organizm is found - OPTIONAL 
     """
-    logger.info("Writing final results")
+    logger.warning("Writing final results")
     logger.info(datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H.%M.%S%z'))
     results_path = global_state.temp_dirs["results"]
     total_hits = sum([sum(hits) for hits in overall_hits.values()])  # Total hits across all accessions
     taxonomy_table = []
     accession_table = []
-    
+
     for accession, hits in overall_hits.items():
 
         hit_sum = sum(hits)
@@ -669,7 +698,6 @@ def fastq_to_fasta(query_path):
     """
 
     output_fasta = global_state.temp_dirs["inputs"]+"/temp.fasta"
-
     head_command = f"head -n 1 {query_path} | cut -c1"
     try:
         head_char = subprocess.run(
@@ -683,7 +711,6 @@ def fastq_to_fasta(query_path):
         logger.exception(f"Error counting sequences: {e}")
         return 0
 
-    
     if head_char == ">":
         return query_path
 
