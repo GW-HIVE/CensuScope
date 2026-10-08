@@ -6,6 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_DIR"
 
+# CENSUSCOPE_DATADIR controls where source files are read from and where
+# taxonomy.db is written. Defaults to the repo root for local use; set by
+# the Docker entrypoint to the mounted volume.
+DATA_DIR="${CENSUSCOPE_DATADIR:-$REPO_DIR}"
+
 FORCE=0
 for arg in "$@"; do
     case "$arg" in
@@ -14,11 +19,13 @@ for arg in "$@"; do
     esac
 done
 
+TAXONOMY_DB="$DATA_DIR/taxonomy.db"
+
 # Skip rebuild if taxonomy.db is newer than all source files
-if [[ "$FORCE" -eq 0 && -f "taxonomy.db" ]]; then
+if [[ "$FORCE" -eq 0 && -f "$TAXONOMY_DB" ]]; then
     NEEDS_REBUILD=0
-    for f in CensuScopeDB/*.gz CensuScopeDB/*.dmp; do
-        if [[ -f "$f" && "$f" -nt "taxonomy.db" ]]; then
+    for f in "$DATA_DIR/CensuScopeDB/"*.gz "$DATA_DIR/CensuScopeDB/"*.dmp; do
+        if [[ -f "$f" && "$f" -nt "$TAXONOMY_DB" ]]; then
             NEEDS_REBUILD=1
             break
         fi
@@ -30,18 +37,22 @@ if [[ "$FORCE" -eq 0 && -f "taxonomy.db" ]]; then
 fi
 
 # nodes, names, and host live inside new_taxdump.tar.gz; extract if needed.
-if [[ ! -f CensuScopeDB/nodes.dmp || ! -f CensuScopeDB/names.dmp || ! -f CensuScopeDB/host.dmp ]]; then
+if [[ ! -f "$DATA_DIR/CensuScopeDB/nodes.dmp" || \
+      ! -f "$DATA_DIR/CensuScopeDB/names.dmp" || \
+      ! -f "$DATA_DIR/CensuScopeDB/host.dmp" ]]; then
     echo "Extracting new_taxdump.tar.gz..."
-    tar -xzf CensuScopeDB/new_taxdump.tar.gz -C CensuScopeDB nodes.dmp names.dmp host.dmp
+    tar -xzf "$DATA_DIR/CensuScopeDB/new_taxdump.tar.gz" \
+        -C "$DATA_DIR/CensuScopeDB" nodes.dmp names.dmp host.dmp
 fi
 
 echo "Start building database: $(date)"
 
-./lib/nucleotide-db.sh CensuScopeDB/ taxonomy.db
-./lib/add-nodes.sh CensuScopeDB/nodes.dmp taxonomy.db
-./lib/add-names.sh CensuScopeDB/names.dmp taxonomy.db
-cp taxonomy.db temp.db
-./lib/add-hosts.sh CensuScopeDB/host.dmp temp.db
-mv temp.db taxonomy.db
+./lib/nucleotide-db.sh "$DATA_DIR/CensuScopeDB/" "$TAXONOMY_DB"
+./lib/add-nodes.sh "$DATA_DIR/CensuScopeDB/nodes.dmp" "$TAXONOMY_DB"
+./lib/add-names.sh "$DATA_DIR/CensuScopeDB/names.dmp" "$TAXONOMY_DB"
+cp "$TAXONOMY_DB" "$DATA_DIR/temp.db"
+./lib/add-hosts.sh "$DATA_DIR/CensuScopeDB/host.dmp" "$DATA_DIR/temp.db"
+mv "$DATA_DIR/temp.db" "$TAXONOMY_DB"
 
 echo "Finished building database: $(date)"
+echo "taxonomy.db written to: $TAXONOMY_DB"

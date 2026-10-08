@@ -9,9 +9,13 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$REPO_DIR"
 
-mkdir -p CensuScopeDB
+# CENSUSCOPE_DATADIR controls where downloads land.
+# Defaults to the repo root for local use; set by the Docker entrypoint
+# to the mounted volume so downloads persist outside the container.
+DATA_DIR="${CENSUSCOPE_DATADIR:-$REPO_DIR}"
+
+mkdir -p "$DATA_DIR/CensuScopeDB"
 
 FORCE=0
 for arg in "$@"; do
@@ -45,12 +49,12 @@ download_if_changed() {
 BASE_URL="https://ftp.ncbi.nlm.nih.gov/pub/taxonomy"
 
 download_if_changed "${BASE_URL}/accession2taxid/nucl_gb.accession2taxid.gz" \
-    "CensuScopeDB/nucl_gb.accession2taxid.gz"
+    "$DATA_DIR/CensuScopeDB/nucl_gb.accession2taxid.gz"
 download_if_changed "${BASE_URL}/accession2taxid/nucl_wgs.accession2taxid.EXTRA.gz" \
-    "CensuScopeDB/nucl_wgs.accession2taxid.EXTRA.gz"
+    "$DATA_DIR/CensuScopeDB/nucl_wgs.accession2taxid.EXTRA.gz"
 download_if_changed "${BASE_URL}/accession2taxid/nucl_wgs.accession2taxid.gz" \
-    "CensuScopeDB/nucl_wgs.accession2taxid.gz"
+    "$DATA_DIR/CensuScopeDB/nucl_wgs.accession2taxid.gz"
 download_if_changed "${BASE_URL}/new_taxdump/new_taxdump.tar.gz" \
-    "CensuScopeDB/new_taxdump.tar.gz"
+    "$DATA_DIR/CensuScopeDB/new_taxdump.tar.gz"
 
 echo "Done. Run lib/build_database.sh to build taxonomy.db."
