@@ -1,0 +1,4 @@
+REMOTE_USER="your_username"
+REMOTE_HOST="your.server.hostname"
+REMOTE_DIR="~/bei_resource_to_sra_srr_parser"
+IDENTITY_FILE="$HOME/.ssh/your_key"
