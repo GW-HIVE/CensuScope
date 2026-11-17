@@ -35,7 +35,7 @@ RUN wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.tar.gz && \
 WORKDIR /app
 
 # Create the mount point for the taxonomy/BLAST database directory.
-# For KVM2 or air-gapped builds: uncomment COPY to bake the DB into the image.
+# For air-gapped builds: uncomment COPY to bake the DB into the image.
 RUN mkdir -p blastdb
 # COPY blastdb /app/blastdb
 
