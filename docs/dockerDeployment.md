@@ -36,6 +36,8 @@ Reference data is **not** copied into the image. It is mounted at runtime (see b
 
 ## Prepare reference data
 
+> **Batch builds:** `build_reference_data.sh` in the repository root runs both steps below for every FASTA in `../databases/input/<BaseDB>/`. It writes to `../databases/output/<BaseDB>/`, skips databases that are already built, and logs each step. Run `./build_reference_data.sh --help` for details. To log CPU and RAM load during a build or grid search, wrap it in `./run_monitored.py build -- ...` or `./run_monitored.py grid -- ...`.
+
 All reference data lives in one host directory that is mounted at `/app/blastdb` in the container. These examples use `./blastdb`:
 
 ```bash
