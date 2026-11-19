@@ -1,86 +1,119 @@
 # CensuScope Docker Deployment
+
 ## Contents
 - [Requirements](#requirements)
-- [Running via the command line](#running-via-the-command-line) -> Step-by-step Directions
-- [Building CensuScope via Docker](#building-censuscope-via-docker)
-- [Running the container via Docker](#running-the-container-via-docker)
+- [Build the image](#build-the-image)
+- [Prepare reference data](#prepare-reference-data)
+- [Run CensuScope](#run-censuscope)
+- [Command line options](#command-line-options)
 - [Output Results](#output-results)
 - [Reproducibility Notes](#reproducibility-notes)
-  
+
 ## Requirements
-Software requirements needed to run the CensuScope Docker include:
-1. Python ≥3.10.6. [3.10.6 recommended](https://www.python.org/downloads/release/python-3106/) (for command line use or development)
-2. [Docker](https://docs.docker.com/engine/install/)
-    - Links if using Docker Desktop:
-      - [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
-      - [Docker Desktop for Mac (macOS)](https://docs.docker.com/desktop/install/mac-install/)
-      - [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-3. [NCBI Blast Command Line tool](https://www.ncbi.nlm.nih.gov/books/NBK569856/)
-4. Database: An indexed database and optional taxonomy map (recommend doing this in your home directory or somewhere you have full permissions)
-     * Look to [taxonomy.db](https://github.com/GW-HIVE/CensuScope/blob/main/docs/taxonomydb.md) and [blast_database.md](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md) README's for more information.
+
+- [Docker](https://docs.docker.com/engine/install/) (Docker Desktop on macOS/Windows also works).
+- Enough disk for the reference data. `taxonomy.db` is about 7 GB, the NCBI downloads used to build it are about 11 GB, and a BLAST database can need anywhere from a few GB to hundreds of GB.
+
+You do **not** need Python, BLAST+, or seqtk on the host. They are all inside the image.
 
 ---
 
-## Running via the command line
-### Clone the repository
-```
-git clone https://github.com/GW-HIVE/CensuScope/
-```
-### Enter the repository
-```
+## Build the image
+
+```bash
+git clone https://github.com/GW-HIVE/CensuScope.git
 cd CensuScope
+docker build -t censuscope .
 ```
 
-**Make sure you are on the desired branch (Check for latest branch):**
+The build starts from the public `python:3.14-slim-trixie` image (pinned by digest in the `Dockerfile`) and installs BLAST+, seqtk, and SQLite from the Debian archive. No pre-built CensuScope image is involved.
 
-```
-git switch [DESIRED BRANCH TAG]
-```
-or 
-```
-git fetch origin
-```
-```
-git checkout BRANCH_NAME
-```
+Tag the image with a version (`censuscope:v1.0`) or your initials if you keep several builds around, and use the same tag in the commands below.
 
-### Build project folders
-If you have already cloned this CensuScope repository and have not already done so, create the required project directories under the CensuScope directory:
-```
-mkdir -p {temp_dirs,database}
-chmod 777 temp_dirs
-```
-> **Note:** The `inputs/` directory is already present in the repository and contains a sample FASTQ file (`sample_input.fastq`). You do not need to create it. You can use the sample file for an initial test run, or add your own query file to this directory.
+Reference data is **not** copied into the image. It is mounted at runtime (see below), so you do not need to put databases in the repository before building.
 
-1. Place your query file (FASTQ or FASTA) into the `inputs/` directory. The sample file `sample_input.fastq` is already there if you want to do a test run first.
-2. Move your **database** file (e.g., slimNT.fa) into the `database` directory.
-3. Move the `taxonomy.db` file to the `database` directory.
+---
 
-### MakeBlastDB Command
-If you have not already done so, please perform the `makeblastdb` command to your database file (e.g., slimNT.fa). This step was done in the [blast_database.md README directions](https://github.com/GW-HIVE/CensuScope/blob/main/docs/blast_database.md).
+## Prepare reference data
 
-Run `makeblastdb` to create the BLAST database:
-```
-makeblastdb -in BLAST_db_file.fa -dbtype nucl -out my_blast_db
-```
-Specific Example:
-```
-makeblastdb -in slimNT.fa -dbtype nucl -out slimNT/
+All reference data lives in one host directory that is mounted at `/app/blastdb` in the container. These examples use `./blastdb`:
+
+```bash
+mkdir -p blastdb inputs temp_dirs
 ```
 
-This will generate files such as, which appear in a subdirectory your "-out" flag points to:
+Pass `--user "$(id -u):$(id -g)"` to every `docker run` so that the files the container creates are owned by you. Do not `chmod 777` the directories.
 
-- `my_blast_db.nsq`
-- `my_blast_db.nin`
-- `my_blast_db.nhr`
+### taxonomy.db
 
-These files collectively represent the BLAST database. This filepath will be the input to "--database" flag in your future `docker run` command.
+The `build-taxonomy` command downloads the NCBI taxonomy dumps into `blastdb/CensuScopeDB/` and builds `blastdb/taxonomy.db`:
 
-Note: The files created may separate into the `slimNT/` subdirectory and some in the `database/' subdirectory. The filepath for "--database" flag would point to the location that the **.nsq**, **.nin**, and **.nhr** files are located.
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/blastdb:/app/blastdb" \
+  censuscope build-taxonomy
+```
 
-### Docker Command Line Options
+Re-running it only re-downloads files that changed. Pass `--force` to re-download everything. See [taxonomydb.md](taxonomydb.md) for the schema and how often to refresh it.
 
-```shell
+Once `taxonomy.db` is built, you can delete `blastdb/CensuScopeDB/` to reclaim space.
+
+### BLAST database
+
+Put your reference FASTA (e.g. `slimNT.fa`) in `blastdb/`, then build the database:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/blastdb:/app/blastdb" \
+  censuscope build-blast /app/blastdb/slimNT.fa /app/blastdb/slimNT
+```
+
+The second argument is the database **prefix**. `makeblastdb` writes `slimNT.nsq`, `slimNT.nin`, `slimNT.nhr`, and related files next to it, and `/app/blastdb/slimNT` is what you pass to `--database`. See [blast_database.md](blast_database.md) for choosing a reference set.
+
+If you already have a BLAST database built elsewhere, copy its files into `blastdb/` instead.
+
+---
+
+## Run CensuScope
+
+The image's entrypoint runs CensuScope, so CensuScope options go directly after the image name. Do **not** add `python lib/censuscope.py`.
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/blastdb:/app/blastdb:ro" \
+  -v "$(pwd)/inputs:/app/inputs:ro" \
+  -v "$(pwd)/temp_dirs:/app/temp_dirs" \
+  censuscope \
+  --iterations 5 \
+  --sample-size 10 \
+  --tax-depth species \
+  --query_path /app/inputs/sample_input.fastq \
+  --database /app/blastdb/slimNT
+```
+
+- `blastdb/` must contain `taxonomy.db` and the BLAST database files.
+- `inputs/` holds your FASTQ/FASTA query. The repository ships `inputs/sample_input.fastq` for a test run.
+- `temp_dirs/` receives a timestamped folder per run.
+
+[`run_docker.sh`](../run_docker.sh) in the repository root is a template for this command.
+
+**Concurrent runs:** output folders are named to the second. If you start several runs at the same moment, give each its own `temp_dirs` mount.
+
+### Entrypoint commands
+
+| Command | Purpose |
+|---|---|
+| `build-taxonomy [--force]` | Download NCBI taxonomy data and build `taxonomy.db` in `/app/blastdb` |
+| `build-blast <fasta> <db-prefix>` | Run `makeblastdb -dbtype nucl -parse_seqids` |
+| *(anything else)* | Passed straight to CensuScope |
+
+Running the image with no arguments prints this usage.
+
+---
+
+## Command line options
+
+```text
 usage: censuscope [options]
 
 options:
@@ -90,77 +123,18 @@ options:
                         The number of sample iterations to perform
   -s SAMPLE_SIZE, --sample-size SAMPLE_SIZE
                         The number of reads to sample for each iteration
-  -t TAX_DEPTH, --tax-depth TAX_DEPTH
+  -t {kingdom,phylum,class,order,family,genus,species}, --tax-depth ...
                         The taxonomy depth to report in the final results
   -q QUERY_PATH, --query_path QUERY_PATH
-                        Input file name
+                        Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)
   -d DATABASE, --database DATABASE
-                        BLAST database name
+                        BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)
 ```
-
----
-
-## Building CensuScope via Docker
-
-A docker file is provided to allow easy building of the CensuScope container. Once all of your files are in their respective directories it can be run at the root directory `CensuScope` (or where the Dockerfile is found).
-
-Run the command:
-
-```
-docker build -t  censuscope:tag .
-```
-
-- `:tag` It is suggested to add a docker tag which allows for multiple docker images to be created without overwriting.
-- Suggestions: censuscope:version (`censuscope:v1.0`), censuscope:initials (`censuscope:ABC`), etc.
-
-This will build a container named `censuscope:tag`. This name will be in input for the `docker run` command below.
-
----
-
-## Running the container via Docker
-
-The CensuScope container can be run via docker on the command line in Linux/Windows by running (replace paths and input file name as necessary; if you followed the steps above, only the "BLASTDB" needs to be updated):
-
-```shell
-docker run -v /PATH/TO/DATABASE_FOLDER:/app/blastdb \
-  -v ~/CensuScope/inputs:/app/inputs \
-  -v ~/CensuScope/temp_dirs:/app/temp_dirs  \
-  censuscope:tag \
-  python lib/censuscope.py \
-  --iterations 5 \
-  --sample-size 10 \
-  --tax-depth species \
-  --query_path /app/inputs/QUERY.FILE \
-  --database /app/blastdb/<BLASTDB FILE>
-```
-- `/PATH/TO/DATABASE_FOLDER` should point to the filepath directory that contains both taxonomy.db and your database file.
-- `censuscope:tag` should be the name of the docker image you created in the previous step.
-- `--query_path /app/inputs/QUERY.FILE` change the `QUERY.FILE` to the name of your sample file found in the `inputs/` directory you created.
-- `--database /app/blastdb/<BLASTDB FILE>` change the `<BLASTDB FILE>` to the name of your database file. You may need to update the filepath to include the directory created by the `makeblastdb` command. See example below.
-
-More Specific Example:
-```shell
-docker run -v /home/desktop/CensuScope/database:/app/blastdb \
-  -v /home/desktop/CensuScope/inputs:/app/inputs \
-  -v /home/desktop/CensuScope/temp_dirs:/app/temp_dirs  \
-  censuscope:v1.1 \
-  python lib/censuscope.py \
-  --iterations 5 \
-  --sample-size 10 \
-  --tax-depth species \
-  --query_path /app/inputs/sample_input.fastq \
-  --database /app/blastdb/slimNT/slimNT
-```
-
-
-See [Running via the command line](#running-via-the-command-line) above for a breakdown of the command line flags. 
-
-Running this command will create a date-time named folder at the specified location `/path/to/CensuScope/temp_dirs` with all the intermediate and result files. 
 
 ---
 
 ## Output Results
-Once you have run the CensuScope Docker, the results and outputs will be in `/temp_dirs/` in your `CensuScope` directory. 
+Each run creates a timestamped folder under the `temp_dirs/` directory you mounted. 
 ```
 cd temp_dirs/
 ```

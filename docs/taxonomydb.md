@@ -93,7 +93,7 @@ At a high level, the build process consists of:
 
 ### Build Scripts
 
-NCBI regularly updates their [FTP Taxonomy file site](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/) with minor edits monthly, but we suggest updating your `taxonomy.md` file every _6 months to a year_. Since their updates are mostly minor and given the amount of time it takes to build the database, it is unnecessary to build a new one each time.
+NCBI regularly updates their [FTP Taxonomy file site](https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/) with minor edits monthly, but we suggest updating your `taxonomy.db` file every _6 months to a year_. Since their updates are mostly minor and given the amount of time it takes to build the database, it is unnecessary to build a new one each time.
 
 The following scripts are used to build the taxonomy database:
 - `lib/download_data.sh`  

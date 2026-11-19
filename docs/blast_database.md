@@ -85,9 +85,9 @@ Common options include:
 
 ---
 
-### Install BLAST
+### Install BLAST (optional)
 
-Install BLAST+ from NCBI if not already available on your computer:
+The Docker image already includes BLAST+. You only need a host install to build or inspect databases outside Docker:
 ```
 https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 ```
@@ -103,35 +103,26 @@ makeblastdb -version
 
 In order for CensuScope to use the BLAST reference, the FASTA file must be converted into an NCBI-recognized BLAST database using `makeblastdb`.
 
-If you have already cloned this CensuScope repository and have not already done so, create the required project directories under the CensuScope directory:
+The CensuScope Docker image includes `makeblastdb`, so you do not need BLAST+ installed on the host. Put your FASTA (e.g. `slimNT.fa`) in the directory you will mount at `/app/blastdb` (here, `./blastdb`) and run:
 ```
-mkdir -p {inputs,temp_dirs,database}
-chmod 777 temp_dirs
-```
-
-Move your BLAST FASTA file (e.g., `slimNT.fa`) into the `database/` directory, then navigate into it:
-```
-cd database
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/blastdb:/app/blastdb" \
+  censuscope build-blast /app/blastdb/slimNT.fa /app/blastdb/slimNT
 ```
 
-Run `makeblastdb` to create the BLAST database:
+This runs `makeblastdb -in slimNT.fa -dbtype nucl -parse_seqids -out slimNT`. To run it with a host install of BLAST+ instead:
 ```
-makeblastdb -in BLAST_db_file.fa -dbtype nucl -parse_seqids -out my_blast_db
-```
-Specific Example:
-```
-makeblastdb -in slimNT.fa -dbtype nucl -parse_seqids -out database/slimNT
+makeblastdb -in slimNT.fa -dbtype nucl -parse_seqids -out slimNT
 ```
 
-This will generate files such as, which appear in a subdirectory your "-out" flag points to:
+Either way, `makeblastdb` writes a set of files that share the `-out` prefix:
 
-- `my_blast_db.nsq`
-- `my_blast_db.nin`
-- `my_blast_db.nhr`
+- `slimNT.nsq`
+- `slimNT.nin`
+- `slimNT.nhr`
+- (plus index files such as `.nog`, `.nos`, `.not`, `.ntf`, `.nto` from `-parse_seqids`)
 
-These files collectively represent the BLAST database. This filepath will be the input to "--database" flag in your future `docker run` command.
-
-Note: The files created may separate into the `slimNT/` subdirectory and some in the `database/' subdirectory. The filepath for "--database" flag would point to the location that the **.nsq**, **.nin**, and **.nhr** files are located.
+Together these files are the BLAST database. Pass the **prefix** to CensuScope as `--database`. For the example above, that is `/app/blastdb/slimNT`, not a file name.
 
 ### Notes on Build Time
 

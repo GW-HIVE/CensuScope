@@ -12,7 +12,7 @@ sqlite3 taxonomy.db "ALTER TABLE names RENAME COLUMN name_txt TO name;"
 sqlite3 taxonomy.db "ALTER TABLE nodes RENAME COLUMN tax_id TO taxid;"
 ```
 
-See [docs/taxonomy.md](taxonomy.md) for the full expected schema.
+See [docs/taxonomydb.md](taxonomydb.md) for the full expected schema.
 
 ---
 

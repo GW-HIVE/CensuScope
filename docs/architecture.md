@@ -52,7 +52,7 @@ CensuScope treats the BLAST database as a fixed reference against which sampled 
 - Provides taxonomic hierarchy and canonical names
 - Uses a reduced schema tailored to CensuScope's lookup and aggregation needs
 
-In containerized deployments, a prebuilt taxonomy database is shipped with the image. See [docs/taxonomy.md](taxonomy.md) for schema details and build instructions.
+In containerized deployments, `taxonomy.db` is not shipped in the image. It is built once (`docker run ... censuscope build-taxonomy`) and mounted at `/app/blastdb` at runtime. See [taxonomydb.md](taxonomydb.md) for schema details and build instructions.
 
 #### CensuScope engine (runtime)
 
