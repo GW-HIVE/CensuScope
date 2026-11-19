@@ -170,6 +170,8 @@ cython_debug/
 /blast_db
 /blastdb
 taxonomy.db
+/grid_runs
+/run_logs
 
 # Local remote-sync config (contains host/user/key names); see sync.cfg.example
 sync.cfg
