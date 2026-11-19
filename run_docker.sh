@@ -9,11 +9,13 @@
 #    writing taxonomy.db to ./blastdb/ on the host:
 #
 #   mkdir -p blastdb
-#   docker run -v "$(pwd)/blastdb:/app/blastdb" censuscope build-taxonomy
+#   docker run --rm --user "$(id -u):$(id -g)" \
+#     -v "$(pwd)/blastdb:/app/blastdb" censuscope build-taxonomy
 #
 # 2. Build a BLAST database from your reference FASTA (one-time):
 #
-#   docker run -v "$(pwd)/blastdb:/app/blastdb" censuscope \
+#   docker run --rm --user "$(id -u):$(id -g)" \
+#     -v "$(pwd)/blastdb:/app/blastdb" censuscope \
 #     build-blast /app/blastdb/reference.fasta /app/blastdb/reference
 #
 # ── Run ───────────────────────────────────────────────────────────────────
@@ -25,9 +27,9 @@
 
 mkdir -p temp_dirs
 
-docker run \
-  -v "$(pwd)/blastdb:/app/blastdb" \
-  -v "$(pwd)/inputs:/app/inputs" \
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/blastdb:/app/blastdb:ro" \
+  -v "$(pwd)/inputs:/app/inputs:ro" \
   -v "$(pwd)/temp_dirs:/app/temp_dirs" \
   censuscope \
   --iterations 5 \
