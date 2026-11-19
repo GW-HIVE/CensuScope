@@ -168,4 +168,8 @@ cython_debug/
 /temp_dirs
 /test_data
 /blast_db
+/blastdb
 taxonomy.db
+
+# Local remote-sync config (contains host/user/key names); see sync.cfg.example
+sync.cfg
