@@ -46,6 +46,6 @@ case "${1:-}" in
         ;;
 
     *)
-        exec python "$SCRIPT_DIR/lib/censuscope.py" "$@"
+        exec python3 "$SCRIPT_DIR/lib/censuscope.py" "$@"
         ;;
 esac

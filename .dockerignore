@@ -1,0 +1,34 @@
+# Keep the build context small: only lib/ and entrypoint.sh are COPY'd. Reference data is mounted at runtime.
+.git
+.gitignore
+.vscode
+**/__pycache__
+**/*.py[cod]
+
+# Reference data and run outputs
+taxonomy.db
+*.db
+CensuScopeDB/
+# Air-gapped builds that uncomment `COPY blastdb` in the Dockerfile must
+# also remove this line.
+blastdb/
+blast_db/
+temp_dirs/
+inputs/
+test_data/
+
+# Local/private files
+sessions/
+sync.cfg
+sync.sh
+sync.cfg.example
+.env
+
+# Not needed in the image
+docs/
+qc/
+grid_search.sh
+run_docker.sh
+Makefile
+*.md
+LICENSE

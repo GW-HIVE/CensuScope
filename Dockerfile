@@ -1,58 +1,52 @@
-# Dockerfile
+# CensuScope container image.
+#
+# Built from the official Python slim image plus Debian packages: no
+# pre-built CensuScope image, no pip, no compilers. CensuScope itself uses
+# only the Python standard library.
+#
+#   docker build -t censuscope .
+#
+# Base: Python 3.14 on Debian 13 (trixie), pinned by digest so rebuilds get
+# the same Python and OS layer. BLAST+/seqtk come from the Debian archive.
+# To update the base: `docker pull python:3.14-slim-trixie`, then replace the
+# digest with the one from
+#   docker inspect --format '{{index .RepoDigests 0}}' python:3.14-slim-trixie
+FROM python:3.14-slim-trixie@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
 
-## Base Image & System Packages
-FROM python:3.10-slim
-RUN apt-get update && apt-get install -y \
-    wget \
-    gcc \
-    make \
-    curl \
-    sqlite3 \
-    zlib1g-dev \
-    build-essential \
-    ca-certificates \
+LABEL org.opencontainers.image.title="CensuScope" \
+      org.opencontainers.image.description="Census-based metagenomic taxonomic profiling with BLAST" \
+      org.opencontainers.image.source="https://github.com/GW-HIVE/CensuScope" \
+      org.opencontainers.image.licenses="CC-BY-3.0"
+
+# ncbi-blast+            blastn, makeblastdb
+# seqtk                  FASTQ -> FASTA conversion
+# sqlite3                taxonomy.db build scripts
+# curl, ca-certificates  NCBI downloads for build-taxonomy
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ncbi-blast+ \
+        seqtk \
+        sqlite3 \
+        curl \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install NCBI BLAST+
-RUN apt-get update && apt-get install -y ncbi-blast+ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Seqtk
-RUN wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.tar.gz && \
-    tar -xzvf v1.3.tar.gz && \
-    cd seqtk-1.3 && \
-    make && \
-    mv seqtk /usr/local/bin/ && \
-    cd .. && \
-    rm -rf seqtk-1.3 v1.3.tar.gz
-
-# Running as root: appropriate for single-user workstations and HPC
-# (Singularity maps UIDs automatically). For shared Docker environments,
-# restore the appuser block below and ensure mounted volumes are readable
-# by UID 1000, or pass --user $(id -u):$(id -g) at runtime.
-# RUN useradd -ms /bin/bash appuser && mkdir -p /app && chown appuser:appuser /app
-# USER appuser
+# Runs as root by default: appropriate for single-user workstations and HPC
+# (Singularity/Apptainer maps UIDs automatically). On shared Docker hosts,
+# pass --user "$(id -u):$(id -g)" at runtime so output files are owned by you.
 WORKDIR /app
 
-# Create the mount point for the taxonomy/BLAST database directory.
-# For air-gapped builds: uncomment COPY to bake the DB into the image.
-RUN mkdir -p blastdb
+# Mount points: reference data (taxonomy.db + BLAST DB) at /app/blastdb,
+# run output at /app/temp_dirs. Sticky world-writable so --user still works
+# if a directory is left unmounted.
+#
+# Air-gapped builds: uncomment the COPY below to bake the reference data
+# into the image, and remove blastdb/ from .dockerignore.
+RUN mkdir -p blastdb temp_dirs && chmod 1777 blastdb temp_dirs
 # COPY blastdb /app/blastdb
 
-## taxonomy.db and BLAST database files are provided at runtime via volume mount.
-## Run lib/download_data.sh and lib/build_database.sh locally to prepare them.
-## See lib/download_data.sh, lib/build_database.sh, and run_docker.sh.
-
-COPY requirements.txt requirements.txt
 COPY lib ./lib
-COPY entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
-
-## Python Setup
-RUN pip install --no-cache-dir -r requirements.txt
-
-## taxonomy.db and BLAST database files are provided at runtime via volume mount.
-## Use the entrypoint's build-taxonomy and build-blast commands to create them
-## inside the container if local builds are not feasible. See entrypoint.sh.
+COPY entrypoint.sh ./
+RUN chmod 755 entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
