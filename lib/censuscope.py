@@ -7,6 +7,7 @@ import csv
 import json
 import os
 import logging
+import logging.handlers
 import random
 import subprocess
 import sqlite3
@@ -45,6 +46,11 @@ class GlobalState:
         self.iteration_count = 0
         self.tax_tree = {}
 
+    def create_dirs(self):
+        """Create the run's output directories. Called only after the
+        arguments and inputs have been validated, so failed runs do not
+        leave empty timestamped folders behind.
+        """
         os.makedirs(self.temp_path, exist_ok=True)
         for dir_path in self.temp_dirs.values():
             os.makedirs(dir_path, exist_ok=True)
@@ -56,8 +62,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
-log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
-
 # Full format for the log file
 file_formatter = logging.Formatter(
     '%(asctime)s - %(levelname)s - %(message)s'
@@ -68,9 +72,12 @@ stream_formatter = logging.Formatter(
     '%(asctime)s - %(message)s'
 )
 
-file_handler = logging.FileHandler(log_file_path)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(file_formatter)
+# Hold log records in memory until the run directory exists; they are
+# written to censuscope.log by start_file_logging().
+startup_buffer = logging.handlers.MemoryHandler(
+    capacity=10000, flushLevel=logging.CRITICAL + 1
+)
+startup_buffer.setLevel(logging.DEBUG)
 
 # Stream handler: only show important things in terminal
 stream_handler = logging.StreamHandler()
@@ -80,13 +87,31 @@ stream_handler.setFormatter(stream_formatter)
 if logger.hasHandlers():
     logger.handlers.clear()
 
-logger.addHandler(file_handler)
+logger.addHandler(startup_buffer)
 logger.addHandler(stream_handler)
 
-logger.info("Global State values set: "+
-    f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, "+
-    f"\n\tTemp path: {global_state.temp_path}"
-)
+
+def start_file_logging():
+    """Attach the censuscope.log file handler and write out any records
+    buffered before the run directory was created.
+    """
+    log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
+
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(file_formatter)
+
+    startup_buffer.setTarget(file_handler)
+    startup_buffer.flush()
+    logger.removeHandler(startup_buffer)
+    startup_buffer.close()
+    logger.addHandler(file_handler)
+
+    logger.info("FileHandler created successfully.")
+    logger.info("Global State values set: "+
+        f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, "+
+        f"\n\tTemp path: {global_state.temp_path}"
+    )
 
 def usr_args():
     """User supplied arguments for functions
@@ -742,8 +767,7 @@ def main():
     """
     Main function
     """
-    
-    logger.info("FileHandler created successfully.")
+
     options = usr_args()
     logger.info(f"{options}")
     logger.warning("")
@@ -759,6 +783,9 @@ def main():
     except ValueError as e:
         logger.critical(f"Database validation failed: {e}")
         sys.exit(1)
+
+    global_state.create_dirs()
+    start_file_logging()
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path
