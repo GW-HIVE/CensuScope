@@ -135,6 +135,12 @@ def usr_args():
         help="BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)"
     )
 
+    parser.add_argument(
+        '--taxonomy-db',
+        default='/app/blastdb/taxonomy.db',
+        help="Path to the taxonomy.db SQLite database (default: /app/blastdb/taxonomy.db)"
+    )
+
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
 
@@ -143,7 +149,8 @@ def usr_args():
     global_state.tax_depth = parser.parse_args().tax_depth
     global_state.query_path = parser.parse_args().query_path
     global_state.database = parser.parse_args().database
-    
+    global_state.taxonomy_db = parser.parse_args().taxonomy_db
+
     options = parser.parse_args()
 
     return options
@@ -488,7 +495,7 @@ def fetch_taxonomy(unique_accessions: dict):
     taxid up to the root.
     """
     
-    db_file = '/app/blastdb/taxonomy.db'
+    db_file = global_state.taxonomy_db
     tax_tree = {
         "0": {
             "taxid": 0,
@@ -503,7 +510,7 @@ def fetch_taxonomy(unique_accessions: dict):
     if os.path.isfile(db_file):
         taxonomy_conn = sqlite3.connect(db_file)
     else:
-        logger.error("No taxonomy DB found. Taxonomic rankings will be ignored.")
+        logger.error(f"No taxonomy DB found at {db_file}. Taxonomic rankings will be ignored.")
         for accession in unique_accessions:
             tax_tree["0"]["accessions"].append(accession)
         return tax_tree
