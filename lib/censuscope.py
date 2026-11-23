@@ -19,6 +19,8 @@ import re
 
 write_lock = Lock()
 
+ACCESSION_RE = re.compile(r"^[A-Z]{1,6}_?\d+(\.\d+)?$")
+
 def normalize_accession(acc: str) -> str:
 	if not acc:
 		return acc
@@ -446,10 +448,10 @@ def refine_blast_files(sample_size: int):
             for row in reader:
                 read_id = row[0]
                 if "|" in row[1]:
-                    try:
-                        accession_raw = row[1].split("|")[3]
-                    except IndexError as error:
-                        accession_raw = row[1].split("|")[-1]
+                    # e.g. RVDB "acc|GENBANK|MH171300.1|desc", NCBI "gi|123|gb|AB000001.1|":
+                    # use the first field that looks like an accession
+                    fields = row[1].split("|")
+                    accession_raw = next((f for f in fields if ACCESSION_RE.match(f)), fields[-1])
                 else:
                     accession_raw = row[1]
 
