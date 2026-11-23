@@ -131,6 +131,8 @@ options:
                         Input file name. Accepted formats: FASTA (.fasta, .fa) or FASTQ (.fastq, .fq)
   -d DATABASE, --database DATABASE
                         BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)
+  --taxonomy-db TAXONOMY_DB
+                        Path to taxonomy.db (default: /app/blastdb/taxonomy.db)
 ```
 
 ---
