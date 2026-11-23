@@ -373,19 +373,21 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
             sample_indices.sort()
             logger.info(f"Sample indices (sorted): {sample_indices}")
 
-            # Create an awk script that will extract sequences based on sample_indices
-            # We store the indices in an associative array
-            awk_script = f"""BEGIN {{ split("{','.join(map(str, sample_indices))}", samples, ","); for (i in samples) sample_map[samples[i]] = 1 }}
-            /^>/ {{ n++; if (n in sample_map) {{ print; while (getline && !/^>/) print }} }}"""
-
-            # Use awk to extract the sequences in one go
-            awk_command = f"awk '{awk_script}' {query_path} > {random_samples_path}/random_sample.{it}.fasta"
+            # Extract the sampled records in one pass. The indices are passed
+            # to awk on stdin (one per line, 1-based) rather than inside the
+            # awk program, which some awk versions (e.g. mawk) cannot handle
+            # for large sample sizes. A record is kept from its header up to
+            # the next header.
+            awk_script = "NR == FNR { keep_idx[$1]; next } /^>/ { n++; keep = (n in keep_idx) } keep"
+            awk_command = f"awk '{awk_script}' - {query_path} > {random_samples_path}/random_sample.{it}.fasta"
+            indices = "".join(f"{i + 1}\n" for i in sample_indices)
 
             try:
                 logger.info(awk_command)
-                subprocess.run(awk_command, shell=True, check=True)
+                subprocess.run(awk_command, shell=True, check=True, input=indices, text=True)
             except subprocess.CalledProcessError as e:
                 logger.exception(f"Error during awk execution: {e}")
+                raise
 
     else:
         logger.warning("Whole file requested, no iterations.")
