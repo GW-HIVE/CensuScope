@@ -7,6 +7,7 @@ import csv
 import json
 import os
 import logging
+import logging.handlers
 import random
 import subprocess
 import sqlite3
@@ -18,6 +19,8 @@ from threading import Thread, Lock
 import re
 
 write_lock = Lock()
+
+ACCESSION_RE = re.compile(r"^[A-Z]{1,6}_?\d+(\.\d+)?$")
 
 def normalize_accession(acc: str) -> str:
 	if not acc:
@@ -43,6 +46,11 @@ class GlobalState:
         self.iteration_count = 0
         self.tax_tree = {}
 
+    def create_dirs(self):
+        """Create the run's output directories. Called only after the
+        arguments and inputs have been validated, so failed runs do not
+        leave empty timestamped folders behind.
+        """
         os.makedirs(self.temp_path, exist_ok=True)
         for dir_path in self.temp_dirs.values():
             os.makedirs(dir_path, exist_ok=True)
@@ -54,8 +62,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
-log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
-
 # Full format for the log file
 file_formatter = logging.Formatter(
     '%(asctime)s - %(levelname)s - %(message)s'
@@ -66,9 +72,12 @@ stream_formatter = logging.Formatter(
     '%(asctime)s - %(message)s'
 )
 
-file_handler = logging.FileHandler(log_file_path)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(file_formatter)
+# Hold log records in memory until the run directory exists; they are
+# written to censuscope.log by start_file_logging().
+startup_buffer = logging.handlers.MemoryHandler(
+    capacity=10000, flushLevel=logging.CRITICAL + 1
+)
+startup_buffer.setLevel(logging.DEBUG)
 
 # Stream handler: only show important things in terminal
 stream_handler = logging.StreamHandler()
@@ -78,13 +87,31 @@ stream_handler.setFormatter(stream_formatter)
 if logger.hasHandlers():
     logger.handlers.clear()
 
-logger.addHandler(file_handler)
+logger.addHandler(startup_buffer)
 logger.addHandler(stream_handler)
 
-logger.info("Global State values set: "+
-    f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, "+
-    f"\n\tTemp path: {global_state.temp_path}"
-)
+
+def start_file_logging():
+    """Attach the censuscope.log file handler and write out any records
+    buffered before the run directory was created.
+    """
+    log_file_path = os.path.join(global_state.temp_dirs["results"], "censuscope.log")
+
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(file_formatter)
+
+    startup_buffer.setTarget(file_handler)
+    startup_buffer.flush()
+    logger.removeHandler(startup_buffer)
+    startup_buffer.close()
+    logger.addHandler(file_handler)
+
+    logger.info("FileHandler created successfully.")
+    logger.info("Global State values set: "+
+        f"\n\tStart Time: {global_state.start_time},\n\tBase directory: {global_state.base_dir}, "+
+        f"\n\tTemp path: {global_state.temp_path}"
+    )
 
 def usr_args():
     """User supplied arguments for functions
@@ -133,6 +160,12 @@ def usr_args():
         help="BLAST nucleotide database path (e.g. /path/to/nt or /path/to/slimNT)"
     )
 
+    parser.add_argument(
+        '--taxonomy-db',
+        default='/app/blastdb/taxonomy.db',
+        help="Path to the taxonomy.db SQLite database (default: /app/blastdb/taxonomy.db)"
+    )
+
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
 
@@ -141,7 +174,8 @@ def usr_args():
     global_state.tax_depth = parser.parse_args().tax_depth
     global_state.query_path = parser.parse_args().query_path
     global_state.database = parser.parse_args().database
-    
+    global_state.taxonomy_db = parser.parse_args().taxonomy_db
+
     options = parser.parse_args()
 
     return options
@@ -373,19 +407,21 @@ def sample_randomizer(iteration_count: int, query_path: str, sample_size: int):
             sample_indices.sort()
             logger.info(f"Sample indices (sorted): {sample_indices}")
 
-            # Create an awk script that will extract sequences based on sample_indices
-            # We store the indices in an associative array
-            awk_script = f"""BEGIN {{ split("{','.join(map(str, sample_indices))}", samples, ","); for (i in samples) sample_map[samples[i]] = 1 }}
-            /^>/ {{ n++; if (n in sample_map) {{ print; while (getline && !/^>/) print }} }}"""
-
-            # Use awk to extract the sequences in one go
-            awk_command = f"awk '{awk_script}' {query_path} > {random_samples_path}/random_sample.{it}.fasta"
+            # Extract the sampled records in one pass. The indices are passed
+            # to awk on stdin (one per line, 1-based) rather than inside the
+            # awk program, which some awk versions (e.g. mawk) cannot handle
+            # for large sample sizes. A record is kept from its header up to
+            # the next header.
+            awk_script = "NR == FNR { keep_idx[$1]; next } /^>/ { n++; keep = (n in keep_idx) } keep"
+            awk_command = f"awk '{awk_script}' - {query_path} > {random_samples_path}/random_sample.{it}.fasta"
+            indices = "".join(f"{i + 1}\n" for i in sample_indices)
 
             try:
                 logger.info(awk_command)
-                subprocess.run(awk_command, shell=True, check=True)
+                subprocess.run(awk_command, shell=True, check=True, input=indices, text=True)
             except subprocess.CalledProcessError as e:
                 logger.exception(f"Error during awk execution: {e}")
+                raise
 
     else:
         logger.warning("Whole file requested, no iterations.")
@@ -444,10 +480,10 @@ def refine_blast_files(sample_size: int):
             for row in reader:
                 read_id = row[0]
                 if "|" in row[1]:
-                    try:
-                        accession_raw = row[1].split("|")[3]
-                    except IndexError as error:
-                        accession_raw = row[1].split("|")[-1]
+                    # e.g. RVDB "acc|GENBANK|MH171300.1|desc", NCBI "gi|123|gb|AB000001.1|":
+                    # use the first field that looks like an accession
+                    fields = row[1].split("|")
+                    accession_raw = next((f for f in fields if ACCESSION_RE.match(f)), fields[-1])
                 else:
                     accession_raw = row[1]
 
@@ -484,7 +520,7 @@ def fetch_taxonomy(unique_accessions: dict):
     taxid up to the root.
     """
     
-    db_file = '/app/blastdb/taxonomy.db'
+    db_file = global_state.taxonomy_db
     tax_tree = {
         "0": {
             "taxid": 0,
@@ -499,7 +535,7 @@ def fetch_taxonomy(unique_accessions: dict):
     if os.path.isfile(db_file):
         taxonomy_conn = sqlite3.connect(db_file)
     else:
-        logger.error("No taxonomy DB found. Taxonomic rankings will be ignored.")
+        logger.error(f"No taxonomy DB found at {db_file}. Taxonomic rankings will be ignored.")
         for accession in unique_accessions:
             tax_tree["0"]["accessions"].append(accession)
         return tax_tree
@@ -731,8 +767,7 @@ def main():
     """
     Main function
     """
-    
-    logger.info("FileHandler created successfully.")
+
     options = usr_args()
     logger.info(f"{options}")
     logger.warning("")
@@ -748,6 +783,9 @@ def main():
     except ValueError as e:
         logger.critical(f"Database validation failed: {e}")
         sys.exit(1)
+
+    global_state.create_dirs()
+    start_file_logging()
 
     global_state.query_path = fastq_to_fasta(
         query_path=global_state.query_path
